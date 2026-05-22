@@ -188,6 +188,11 @@ async function handleRequest(req: NextRequest, slug: string[], method: string) {
 // ─── Dynamic routes with path params ─────────────────────
 
 async function handleDynamicRoute(path: string, method: string, req: NextRequest, sql: any, user: any): Promise<Response> {
+  // health — no auth required
+  if (path === 'health' && method === 'GET') {
+    return json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString() } });
+  }
+
   if (!user) return error('Unauthorized', 401);
 
   // projects/:id
