@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// On production (same domain), use relative URLs.
+// On local dev, NEXT_PUBLIC_API_URL points to local Fastify server.
+const API_BASE = typeof window !== 'undefined' && window.location.origin.includes('localhost') && process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL
+  : '';
 
 interface ApiResult<T> {
   success: boolean;
