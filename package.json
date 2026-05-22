@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "vercel-build": "turbo build --filter=@projecthub/web",
     "lint": "turbo lint",
     "test": "turbo test",
     "clean": "turbo clean",
