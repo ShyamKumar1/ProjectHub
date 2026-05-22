@@ -17,11 +17,30 @@ function route(path: string, methods: { GET?: Handler; POST?: Handler; PATCH?: H
 
 route('auth/google', {
   POST: async (req, sql, _user, _p) => {
-    const { access_token } = await req.json();
-    if (!access_token) return error('access_token required');
+    const { code, code_verifier, redirect_uri } = await req.json();
+    if (!code) return error('Authorization code required');
 
+    // Exchange authorization code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: redirect_uri || '',
+        grant_type: 'authorization_code',
+        ...(code_verifier ? { code_verifier } : {}),
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      return error('Failed to exchange authorization code: ' + (tokenData.error || 'unknown'));
+    }
+
+    // Fetch user info with the access token
     const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` },
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
     if (!res.ok) return error('Invalid Google token', 401);
 

@@ -1,28 +1,34 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
+import { api } from '@/lib/api';
 
 export default function GoogleCallback() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
 
   useEffect(() => {
-    // Google implicit flow returns token in URL fragment (#access_token=...)
-    // Fragments are not sent to server — we parse them client-side
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get('access_token');
-
-    if (accessToken) {
-      loginWithGoogle(accessToken).then(() => {
+    const code = searchParams.get('code');
+    if (code) {
+      // Send code + PKCE verifier to our backend for token exchange
+      const verifier = sessionStorage.getItem('pkce_verifier');
+      api.post<{ token: string; user: any }>('/api/v1/auth/google', {
+        code,
+        code_verifier: verifier,
+        redirect_uri: `${window.location.origin}/api/auth/google/callback`,
+      }).then((res) => {
+        if (res.data?.token) api.setToken(res.data.token);
         router.push('/dashboard');
       }).catch(() => {
         router.push('/login?error=google_auth_failed');
       });
+    } else if (searchParams.get('error')) {
+      router.push('/login?error=' + searchParams.get('error'));
     } else {
-      router.push('/login?error=no_token');
+      router.push('/login?error=no_code');
     }
   }, []);
 

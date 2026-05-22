@@ -7,41 +7,50 @@ import { motion } from 'framer-motion';
 import { Flame, Github } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
+async function generatePKCE() {
+  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return { verifier, challenge };
+}
+
 export default function LoginPage() {
   const { user, isLoading, checkSession } = useAuthStore();
   const router = useRouter();
 
-  useEffect(() => {
-    checkSession();
-  }, [checkSession]);
+  useEffect(() => { checkSession(); }, [checkSession]);
 
   useEffect(() => {
-    if (!isLoading && user) {
-      router.push('/dashboard');
-    }
+    if (!isLoading && user) router.push('/dashboard');
   }, [isLoading, user, router]);
 
-  const handleGoogleLogin = () => {
-    // In production, redirect to Google OAuth
-    // For dev, we use a popup/modal approach
+  const handleGoogleLogin = async () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      // Dev fallback: show mock login
-      // This will be replaced with real OAuth flow
-      alert('Set NEXT_PUBLIC_GOOGLE_CLIENT_ID env var to enable Google login');
-      return;
-    }
+    if (!clientId) { alert('Google client ID not configured'); return; }
+
+    const { verifier, challenge } = await generatePKCE();
+    sessionStorage.setItem('pkce_verifier', verifier);
+
     const redirectUri = `${window.location.origin}/api/auth/google/callback`;
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile`;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=code` +
+      `&scope=openid%20email%20profile` +
+      `&code_challenge=${challenge}` +
+      `&code_challenge_method=S256` +
+      `&access_type=offline`;
     window.location.href = url;
   };
 
   const handleGithubLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    if (!clientId) {
-      alert('Set NEXT_PUBLIC_GITHUB_CLIENT_ID env var to enable GitHub login');
-      return;
-    }
+    if (!clientId) { alert('GitHub client ID not configured'); return; }
     const redirectUri = `${window.location.origin}/api/auth/github/callback`;
     const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
     window.location.href = url;
@@ -49,38 +58,26 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-dark-800 flex items-center justify-center p-4">
-      {/* Background decoration */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-accent/5 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-accent-light/5 blur-3xl" />
       </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.44, 0, 0.56, 1] }}
         className="relative w-full max-w-sm"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 mb-4">
             <Flame size={32} className="text-accent" />
           </div>
           <h1 className="text-h3 font-display text-gradient">ProjectHub</h1>
-          <p className="text-text-secondary mt-2 text-sm">
-            Your central dashboard for all projects
-          </p>
+          <p className="text-text-secondary mt-2 text-sm">Your central dashboard for all projects</p>
         </div>
-
-        {/* Login Card */}
         <div className="bg-dark-800/80 backdrop-blur-sm border border-dark-300 rounded-xl p-8 shadow-glow-lg">
           <div className="space-y-3">
-            <Button
-              variant="secondary"
-              size="lg"
-              className="w-full"
-              onClick={handleGoogleLogin}
-            >
+            <Button variant="secondary" size="lg" className="w-full" onClick={handleGoogleLogin}>
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -89,22 +86,13 @@ export default function LoginPage() {
               </svg>
               Continue with Google
             </Button>
-
-            <Button
-              variant="secondary"
-              size="lg"
-              className="w-full"
-              onClick={handleGithubLogin}
-            >
+            <Button variant="secondary" size="lg" className="w-full" onClick={handleGithubLogin}>
               <Github size={20} />
               Continue with GitHub
             </Button>
           </div>
-
           <div className="mt-6 text-center">
-            <p className="text-xs text-text-muted">
-              By continuing, you agree to ProjectHub's Terms of Service
-            </p>
+            <p className="text-xs text-text-muted">By continuing, you agree to ProjectHub's Terms of Service</p>
           </div>
         </div>
       </motion.div>
