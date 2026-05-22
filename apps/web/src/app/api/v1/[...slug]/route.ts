@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import getSql from '@/lib/db';
-import { getUserFromSession, signToken, json, error } from '@/lib/auth';
+import { getUserFromSession, signToken, verifyToken, json, error } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 type Handler = (req: NextRequest, sql: any, user: any, params: string[]) => Promise<Response>;
@@ -41,10 +41,13 @@ route('auth/google', {
     const user = users[0];
     const token = await signToken({ id: user.id, email: user.email, name: user.name });
 
-    return json({
+    // Set cookie
+    const response = json({
       success: true,
       data: { token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, timezone: user.timezone } },
     });
+    response.headers.set('Set-Cookie', `token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+    return response;
   },
 });
 
@@ -155,7 +158,16 @@ async function handleRequest(req: NextRequest, slug: string[], method: string) {
   try {
     const path = slug.join('/');
     const sql = getSql();
-    const user = await getUserFromSession();
+
+    // Auth: check cookie first, then Bearer token
+    let user = await getUserFromSession();
+    if (!user) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        user = await verifyToken(authHeader.slice(7));
+      }
+    }
+
     const routeDef = routes.get(path);
 
     if (!routeDef) {
@@ -197,11 +209,14 @@ async function handleDynamicRoute(path: string, method: string, req: NextRequest
     if (method === 'PATCH') {
       const body = await req.json();
       const sets: string[] = [];
+      const vals: any[] = [];
+      let idx = 1;
       for (const key of ['name', 'description', 'icon', 'status', 'visibility']) {
-        if (body[key] !== undefined) sets.push(`${key} = '${String(body[key]).replace(/'/g, "''")}'`);
+        if (body[key] !== undefined) { sets.push(`${key} = $${idx++}`); vals.push(body[key]); }
       }
       if (sets.length > 0) {
-        await sql`UPDATE projects SET ${sql(sets.join(', '))}, updated_at = NOW() WHERE id = ${id}`;
+        vals.push(id);
+        await sql(`UPDATE projects SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx}`, vals);
       }
       const p = await sql`SELECT * FROM projects WHERE id = ${id}`;
       return json({ success: true, data: p[0] });
@@ -239,13 +254,18 @@ async function handleDynamicRoute(path: string, method: string, req: NextRequest
     if (method === 'PATCH') {
       const body = await req.json();
       const sets: string[] = [];
+      const vals: any[] = [];
+      let idx = 1;
       for (const key of ['title', 'description', 'due_date', 'priority', 'position', 'status', 'estimated_hours', 'assignee_id', 'parent_task_id']) {
         if (body[key] !== undefined) {
-          const v = body[key] === null ? 'NULL' : `'${String(body[key]).replace(/'/g, "''")}'`;
-          sets.push(`${key} = ${v}`);
+          sets.push(`${key} = $${idx++}`);
+          vals.push(body[key]);
         }
       }
-      if (sets.length > 0) await sql`UPDATE tasks SET ${sql(sets.join(', '))}, updated_at = NOW() WHERE id = ${tid}`;
+      if (sets.length > 0) {
+        vals.push(tid);
+        await sql(`UPDATE tasks SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx}`, vals);
+      }
 
       // Log activity if completed
       const task = (await sql`SELECT * FROM tasks WHERE id = ${tid}`)[0];
@@ -294,7 +314,7 @@ async function handleDynamicRoute(path: string, method: string, req: NextRequest
       const week: any[] = [];
       for (let i = 0; i < 7; i++) {
         const dateStr = d.toISOString().split('T')[0];
-        const count = dayMap.get(dateStr) || 0;
+        const count = (dayMap.get(dateStr) as number) || 0;
         week.push({ date: dateStr, count, level: count <= 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 10 ? 3 : 4 });
         d.setDate(d.getDate() + 1);
       }
