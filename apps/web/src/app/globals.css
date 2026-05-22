@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Landa Design System CSS Variables ─────────────────── */
+
+:root {
+  --color-accent: #09bc8a;
+  --color-accent-soft: #69ecbf;
+  --color-bg-dark: #010907;
+  --color-bg-card: #0a1a15;
+  --color-bg-card-hover: #0f221c;
+  --color-bg-surface: #f4f7f5;
+  --color-text-primary: #f4f7f5;
+  --color-text-secondary: #8da39a;
+  --color-text-muted: #6a867a;
+  --color-border: #1f332b;
+  --color-border-focus: #09bc8a;
+  --font-primary: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --font-display: 'Clash Display', 'Inter Display', serif;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 15px;
+  --radius-xl: 24px;
+  --radius-2xl: 40px;
+  --radius-pill: 999px;
+  --shadow-xs: rgba(0, 0, 0, 0.05) 0px 10px 20px;
+  --shadow-sm: rgba(0, 0, 0, 0.1) 0px 2px 4px 0px, rgba(0, 0, 0, 0.05) 0px 1px 0px 0px, rgba(255, 255, 255, 0.15) 0px 0px 0px 1px;
+  --shadow-md: rgba(105, 236, 191, 0.04) 0px 12px 32px 0px inset, rgba(105, 236, 191, 0.08) 0px 0px 12px 0px inset, rgba(105, 236, 191, 0.04) 0px 0px 8px 0px inset, rgba(105, 236, 191, 0.16) 0px 1px 1px 0px inset;
+  --transition-default: color 0.45s cubic-bezier(0.44, 0, 0.56, 1);
+}
+
+/* ─── Base Styles ─────────────────────────────────────── */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-primary);
+    background-color: var(--color-bg-dark);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-pill);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+}
+
+/* ─── Utility Layers ───────────────────────────────────── */
+
+@layer components {
+  .glass-panel {
+    background: rgba(10, 26, 21, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .glass-panel-hover {
+    transition: all 0.45s cubic-bezier(0.44, 0, 0.56, 1);
+  }
+  .glass-panel-hover:hover {
+    border-color: rgba(9, 188, 138, 0.3);
+    box-shadow: 0 0 30px rgba(9, 188, 138, 0.08);
+  }
+
+  .accent-glow {
+    box-shadow: 0 0 20px rgba(9, 188, 138, 0.15), 0 0 40px rgba(9, 188, 138, 0.05);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #09bc8a 0%, #69ecbf 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ─── Contribution Graph Cell Colors ───────────────────── */
+
+.contribution-level-0 { fill: #1f332b; }
+.contribution-level-1 { fill: #0d6e4e; }
+.contribution-level-2 { fill: #09bc8a; }
+.contribution-level-3 { fill: #4ddba9; }
+.contribution-level-4 { fill: #69ecbf; }
+
+/* ─── Animations ───────────────────────────────────────── */
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}

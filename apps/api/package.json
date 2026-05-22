@@ -1,0 +1,37 @@
+{
+  "name": "@projecthub/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "migrate": "tsx src/seed.ts",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo node_modules"
+  },
+  "dependencies": {
+    "@projecthub/shared": "*",
+    "fastify": "^4.26.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/jwt": "^8.0.0",
+    "@fastify/cookie": "^9.3.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/websocket": "^10.0.0",
+    "fastify-type-provider-zod": "^1.1.0",
+    "pg": "^8.11.0",
+    "redis": "^4.6.0",
+    "ioredis": "^5.4.0",
+    "zod": "^3.22.0",
+    "dotenv": "^16.4.0",
+    "nanoid": "^5.0.0",
+    "undici": "^6.0.0",
+    "socket.io": "^4.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "@projecthub/tsconfig": "*"
+  }
+}
