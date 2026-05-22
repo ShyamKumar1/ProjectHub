@@ -1,0 +1,43 @@
+# ProjectHub Dashboard & Collaboration Hub
+
+services:
+  # Backend API — Fastify server
+  - type: web
+    name: projecthub-api
+    env: node
+    repo: https://github.com/ShyamKumar1/ProjectHub
+    branch: main
+    buildCommand: npm install && cd packages/shared && npx tsc
+    startCommand: cd apps/api && npx tsx src/index.ts
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        value: https://projecthub.vercel.app
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: projecthub-db
+          property: connectionString
+      - key: REDIS_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+
+  # PostgreSQL Database
+  - type: postgresql
+    name: projecthub-db
+    plan: free
+    ipAllowList: []
