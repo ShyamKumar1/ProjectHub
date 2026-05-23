@@ -30,8 +30,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: res.data.user, isLoading: false });
   },
   logout: async () => {
-    await api.logout();
+    // Clear local state immediately, then try API
+    api.setToken(null);
     set({ user: null, isLoading: false });
+    try {
+      await api.post('/api/v1/auth/logout');
+    } catch {
+      // API cleanup is optional - local state is already cleared
+    }
   },
   checkSession: async () => {
     try {

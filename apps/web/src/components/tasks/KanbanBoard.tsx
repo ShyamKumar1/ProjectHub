@@ -41,7 +41,7 @@ export default function KanbanBoard({ projectId, tasks, onUpdate }: KanbanBoardP
   };
 
   const handleDelete = async (taskId: string) => {
-    if (!confirm('Delete this task?')) return;
+    if (!confirm('Delete this task permanently?')) return;
     try {
       await api.deleteTask(taskId);
       toast.success('Task deleted');

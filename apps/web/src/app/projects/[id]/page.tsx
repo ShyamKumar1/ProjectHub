@@ -96,6 +96,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleDeleteResource = async (id: string) => {
+    if (!confirm('Delete this resource?')) return;
     try {
       await api.deleteResource(id);
       toast.success('Resource deleted');
