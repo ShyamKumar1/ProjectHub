@@ -23,7 +23,13 @@ export default function LoginPage() {
   const { user, isLoading, checkSession } = useAuthStore();
   const router = useRouter();
 
-  useEffect(() => { checkSession(); }, [checkSession]);
+  useEffect(() => {
+    // Clear any stale logout flag
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('ph_logged_out');
+    }
+    checkSession();
+  }, [checkSession]);
 
   useEffect(() => {
     if (!isLoading && user) router.push('/dashboard');
