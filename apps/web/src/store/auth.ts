@@ -30,14 +30,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: res.data.user, isLoading: false });
   },
   logout: async () => {
-    // Clear local state immediately, then try API
+    // Clear local state immediately - force redirect to login
     api.setToken(null);
     set({ user: null, isLoading: false });
+    // Navigate to login page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    // Best-effort: notify the server
     try {
       await api.post('/api/v1/auth/logout');
-    } catch {
-      // API cleanup is optional - local state is already cleared
-    }
+    } catch { /* ignore */ }
   },
   checkSession: async () => {
     try {
