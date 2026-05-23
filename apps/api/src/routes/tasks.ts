@@ -41,15 +41,19 @@ export default async function taskRoutes(app: FastifyInstance) {
 
     const updated = await models.updateTask(request.params.taskId, body);
 
-    // If status changed to completed, log activity
+    // If status changed to completed, log activity (re-check to avoid double-logging)
     if (body.status === 'completed' && task.status !== 'completed') {
-      await models.createActivity({
-        id: randomUUID(),
-        user_id: user.id,
-        project_id: task.project_id,
-        activity_type: 'task_completed',
-        metadata: { task_id: task.id, task_title: task.title },
-      });
+      // Double-check the task wasn't already completed (handles race conditions)
+      const recheck = await models.getTaskById(request.params.taskId);
+      if (recheck && recheck.status === 'completed' && task.status !== 'completed') {
+        await models.createActivity({
+          id: randomUUID(),
+          user_id: user.id,
+          project_id: task.project_id,
+          activity_type: 'task_completed',
+          metadata: { task_id: task.id, task_title: task.title },
+        });
+      }
     }
 
     return { success: true, data: updated };

@@ -100,10 +100,10 @@ export default function SettingsPage() {
               <Bell size={18} className="text-warning" />
               <div>
                 <p className="text-sm text-text-primary">Notifications</p>
-                <p className="text-xs text-text-muted">Manage notification preferences</p>
+                <p className="text-xs text-text-muted">Login notifications and task alerts</p>
               </div>
             </div>
-            <Button variant="secondary" size="sm">Configure</Button>
+            <span className="text-xs text-text-muted bg-dark-600 px-2 py-1 rounded-pill">Active ✅</span>
           </div>
         </div>
       </Card>

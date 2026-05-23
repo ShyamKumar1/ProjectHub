@@ -294,7 +294,11 @@ async function handleDynamicRoute(path: string, method: string, req: NextRequest
       // Log activity if completed
       const task = (await sql`SELECT * FROM tasks WHERE id = ${tid}`)[0];
       if (body.status === 'completed' && task && task.status !== 'completed') {
-        await sql`INSERT INTO activity_logs (id, user_id, project_id, activity_type, metadata) VALUES (gen_random_uuid(), ${user.id}, ${task.project_id}, 'task_completed', ${JSON.stringify({ task_id: task.id, task_title: task.title })})`;
+        // Double-check to prevent double-logging from React StrictMode
+        const recheck = (await sql`SELECT * FROM tasks WHERE id = ${tid}`)[0];
+        if (recheck && recheck.status === 'completed' && task.status !== 'completed') {
+          await sql`INSERT INTO activity_logs (id, user_id, project_id, activity_type, metadata) VALUES (gen_random_uuid(), ${user.id}, ${task.project_id}, 'task_completed', ${JSON.stringify({ task_id: task.id, task_title: task.title })})`;
+        }
       }
 
       return json({ success: true, data: task });

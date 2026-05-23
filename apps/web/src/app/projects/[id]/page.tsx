@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import ContributionGraph from '@/components/projects/ContributionGraph';
 import TaskList from '@/components/tasks/TaskList';
+import KanbanBoard from '@/components/tasks/KanbanBoard';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import {
@@ -36,6 +37,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks');
+  const [taskView, setTaskView] = useState<'list' | 'kanban'>('list');
 
   // Edit modal
   const [editOpen, setEditOpen] = useState(false);
@@ -237,11 +239,41 @@ export default function ProjectDetailPage() {
         {/* Main content */}
         <div className="lg:col-span-2">
           {activeTab === 'tasks' && (
-            <TaskList
-              projectId={projectId}
-              tasks={project.tasks || []}
-              onUpdate={fetchProject}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setTaskView('list')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      taskView === 'list' ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-dark-700 text-text-muted border border-dark-300 hover:text-text-primary'
+                    }`}
+                  >
+                    List
+                  </button>
+                  <button
+                    onClick={() => setTaskView('kanban')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      taskView === 'kanban' ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-dark-700 text-text-muted border border-dark-300 hover:text-text-primary'
+                    }`}
+                  >
+                    Kanban
+                  </button>
+                </div>
+              </div>
+              {taskView === 'list' ? (
+                <TaskList
+                  projectId={projectId}
+                  tasks={project.tasks || []}
+                  onUpdate={fetchProject}
+                />
+              ) : (
+                <KanbanBoard
+                  projectId={projectId}
+                  tasks={project.tasks || []}
+                  onUpdate={fetchProject}
+                />
+              )}
+            </div>
           )}
 
           {activeTab === 'resources' && (

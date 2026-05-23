@@ -3,15 +3,46 @@ import * as models from '../db/models';
 import { query } from '../db/pool';
 
 export default async function authRoutes(app: FastifyInstance) {
-  // POST /api/v1/auth/google — Google OAuth token exchange
+  // POST /api/v1/auth/google — Google OAuth token exchange (supports both implicit and PKCE)
   app.post('/api/v1/auth/google', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { access_token } = request.body as { access_token?: string };
-    if (!access_token)
-      return reply.status(400).send({ success: false, error: 'access_token required' });
+    const body = request.body as {
+      access_token?: string;
+      code?: string;
+      code_verifier?: string;
+      redirect_uri?: string;
+    };
 
     try {
+      console.log('Google auth POST body keys:', Object.keys(body));
+      let accessToken = body.access_token;
+
+      // PKCE authorization code flow — exchange code for token
+      if (!accessToken && body.code) {
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code: body.code,
+            client_id: process.env.GOOGLE_CLIENT_ID || '',
+            client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+            redirect_uri: body.redirect_uri || '',
+            grant_type: 'authorization_code',
+            ...(body.code_verifier ? { code_verifier: body.code_verifier } : {}),
+          }),
+        });
+        const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+        console.log('Google token exchange response:', tokenData.error || 'success');
+        if (!tokenData.access_token) {
+          return reply.status(401).send({ success: false, error: 'Code exchange failed: ' + (tokenData.error || 'unknown') });
+        }
+        accessToken = tokenData.access_token;
+      }
+
+      if (!accessToken)
+        return reply.status(400).send({ success: false, error: 'access_token or code required' });
+
       const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${access_token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok)
         return reply.status(401).send({ success: false, error: 'Invalid Google token' });
@@ -33,8 +64,9 @@ export default async function authRoutes(app: FastifyInstance) {
             [googleUser.id, googleUser.picture, user.id],
           );
         } else {
+          const crypto = await import('node:crypto');
           user = await models.createUser({
-            id: googleUser.id,
+            id: crypto.randomUUID(),
             email: googleUser.email,
             name: googleUser.name,
             avatar_url: googleUser.picture,
@@ -72,7 +104,8 @@ export default async function authRoutes(app: FastifyInstance) {
         },
       };
     } catch (err) {
-      return reply.status(500).send({ success: false, error: 'Authentication failed' });
+      console.error('Google auth error:', err instanceof Error ? err.message : err, (err as any)?.stack);
+      return reply.status(500).send({ success: false, error: 'Authentication failed: ' + (err instanceof Error ? err.message : 'unknown') });
     }
   });
 
@@ -116,8 +149,9 @@ export default async function authRoutes(app: FastifyInstance) {
             [githubId, githubUser.avatar_url, user.id],
           );
         } else {
+          const crypto = await import('node:crypto');
           user = await models.createUser({
-            id: githubId,
+            id: crypto.randomUUID(),
             email: githubUser.email || `${githubUser.login}@github.com`,
             name: githubUser.login,
             avatar_url: githubUser.avatar_url,

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
 import Sidebar from '@/components/layout/Sidebar';
@@ -33,10 +33,21 @@ function AppContent({ children }: { children: React.ReactNode }) {
   }, [checkSession]);
 
   useEffect(() => {
-    if (!isLoading && !user && pathname !== '/login') {
+    if (!isLoading && !user && pathname !== '/login' && !pathname.startsWith('/api/auth/')) {
       router.push('/login');
     }
   }, [isLoading, user, pathname, router]);
+
+  // Fix 6: Show login notification
+  useEffect(() => {
+    if (user && !isLoading) {
+      const hasNotified = sessionStorage.getItem('login_notified');
+      if (!hasNotified) {
+        sessionStorage.setItem('login_notified', 'true');
+        toast.success('Welcome back! 🔥');
+      }
+    }
+  }, [user, isLoading]);
 
   if (isLoading) {
     return (
@@ -52,7 +63,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   }
 
   // Login page — no layout
-  if (pathname === '/login') {
+  if (pathname === '/login' || pathname.startsWith('/api/auth/')) {
     return <>{children}</>;
   }
 
