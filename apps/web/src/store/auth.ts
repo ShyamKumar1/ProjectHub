@@ -33,21 +33,26 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    // Mark as logged out so checkSession knows to skip the API call
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('ph_logged_out', 'true');
-    }
-
-    // Clear local token immediately
-    api.setToken(null);
-    set({ user: null, isLoading: false });
-
-    // Tell server to clear the HTTP-only cookie (await it!)
+    // Step 1: Tell the server to clear the HTTP-only cookie FIRST
+    // This must complete before we navigate anywhere, otherwise
+    // the client-side AppContent auth guard will fire checkSession
+    // and the still-valid cookie will re-authenticate the user.
     try {
       await api.post('/api/v1/auth/logout');
     } catch { /* ignore */ }
 
-    // Navigate to login
+    // Step 2: Mark as logged out (belt-and-suspenders — cookie is already gone)
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('ph_logged_out', 'true');
+    }
+
+    // Step 3: Clear local state
+    api.setToken(null);
+    set({ user: null, isLoading: false });
+
+    // Step 4: Navigate to login via FULL browser navigation
+    // This prevents the AppContent routing guard from firing a
+    // client-side router.push('/login') before the cookie is cleared.
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }

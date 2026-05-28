@@ -83,10 +83,11 @@ export default function ContributionGraph({ projectId }: ContributionGraphProps)
             <div>
               <div className="flex gap-1 mb-1">
                 {graph.weeks
-                  .filter((_: any, i: number) => i % 4 === 0)
-                  .map((_w: any, i: number) => (
-                    <div key={i} className="text-[10px] text-text-muted" style={{ width: '16px' }}>
-                      {monthLabels[i % 12]}
+                  .map((week: any, idx: number) => ({ week, weekIndex: idx }))
+                  .filter(({ weekIndex }: { weekIndex: number }) => weekIndex % 4 === 0)
+                  .map(({ week, weekIndex }: { week: any; weekIndex: number }) => (
+                    <div key={weekIndex} className="text-[10px] text-text-muted" style={{ width: '16px' }}>
+                      {monthLabels[Math.floor(weekIndex / 4.3) % 12]}
                     </div>
                   ))}
               </div>

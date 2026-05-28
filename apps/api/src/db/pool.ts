@@ -11,7 +11,7 @@ const poolConfig = process.env.DATABASE_URL
     }
   : {
       host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+      port: parseInt(process.env.POSTGRES_PORT || '5433', 10),
       database: process.env.POSTGRES_DB || 'projecthub',
       user: process.env.POSTGRES_USER || 'projecthub',
       password: process.env.POSTGRES_PASSWORD || 'projecthub',

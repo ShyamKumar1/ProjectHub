@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const { user, setUser } = useAuthStore();
   const { isDark, toggle } = useThemeStore();
   const [timezone, setTimezone] = useState(user?.timezone || 'UTC');
+  const [streakPrefs, setStreakPrefs] = useState({ freeze_weekends: true, remind_at_hour: 9 });
 
   const handleSaveTimezone = async () => {
     try {
@@ -116,11 +117,29 @@ export default function SettingsPage() {
         </p>
         <div className="space-y-3">
           <label className="flex items-center gap-3 p-3 bg-dark-700 rounded-lg cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded accent-accent" defaultChecked />
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded accent-accent"
+              checked={streakPrefs.freeze_weekends}
+              onChange={(e) => {
+                const updated = { ...streakPrefs, freeze_weekends: e.target.checked };
+                setStreakPrefs(updated);
+                api.updateProfile({ streak_preferences: updated }).catch(() => {});
+              }}
+            />
             <span className="text-sm text-text-primary">Freeze streaks on weekends</span>
           </label>
           <label className="flex items-center gap-3 p-3 bg-dark-700 rounded-lg cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded accent-accent" defaultChecked />
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded accent-accent"
+              checked={streakPrefs.remind_at_hour === 9}
+              onChange={(e) => {
+                const updated = { ...streakPrefs, remind_at_hour: e.target.checked ? 9 : -1 };
+                setStreakPrefs(updated);
+                api.updateProfile({ streak_preferences: updated }).catch(() => {});
+              }}
+            />
             <span className="text-sm text-text-primary">Send daily reminder at 9:00 AM</span>
           </label>
         </div>

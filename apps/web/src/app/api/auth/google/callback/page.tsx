@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 
-export default function GoogleCallback() {
+function GoogleCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
@@ -33,4 +33,12 @@ export default function GoogleCallback() {
   }, []);
 
   return <div className="min-h-screen flex items-center justify-center text-text-muted">Authenticating with Google...</div>;
+}
+
+export default function GoogleCallback() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-text-muted">Loading...</div>}>
+      <GoogleCallbackInner />
+    </Suspense>
+  );
 }

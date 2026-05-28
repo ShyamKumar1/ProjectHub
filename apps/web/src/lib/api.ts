@@ -1,8 +1,6 @@
-// On production (same domain), use relative URLs.
-// On local dev, NEXT_PUBLIC_API_URL points to local Fastify server.
-const API_BASE = typeof window !== 'undefined' && window.location.origin.includes('localhost') && process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL
-  : '';
+// API requests always go to the same origin (handled by Next.js rewrites in next.config.js).
+// Rewrites proxy /api/v1/* to the configured Fastify backend.
+const API_BASE = '';
 
 interface ApiResult<T> {
   success: boolean;

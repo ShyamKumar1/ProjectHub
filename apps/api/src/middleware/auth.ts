@@ -1,6 +1,5 @@
 // Fastify + TypeScript backend - Auth middleware
 import { FastifyRequest, FastifyReply } from 'fastify';
-import fp from 'fastify-plugin';
 
 // Augment Fastify types for JWT
 declare module 'fastify' {

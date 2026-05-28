@@ -76,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_task_id);
 
 -- ─── Activity Logs ───────────────────────────────────────
+-- NOTE: 'commit_pushed' is defined in the enum but unused in code (no code creates it).
 CREATE TYPE activity_type AS ENUM ('task_completed', 'resource_added', 'time_logged', 'commit_pushed', 'project_created', 'member_added');
 
 CREATE TABLE IF NOT EXISTS activity_logs (

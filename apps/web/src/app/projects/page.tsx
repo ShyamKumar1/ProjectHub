@@ -1,10 +1,5 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 export default function ProjectsPage() {
-  const router = useRouter();
-  useEffect(() => { router.push('/dashboard'); }, [router]);
-  return null;
+  redirect('/dashboard');
 }

@@ -1,0 +1,606 @@
+{
+  "project": "ProjectHub",
+  "version": "1.0.0",
+  "description": "Full-stack project dashboard and collaboration hub",
+  "architecture": {
+    "type": "Monorepo (Turborepo)",
+    "frontend": {
+      "framework": "Next.js 14 (App Router)",
+      "port": 3000,
+      "dir": "apps/web",
+      "languages": ["TypeScript", "React 18", "Tailwind CSS"],
+      "api_proxy": "Next.js rewrites proxy /api/v1/* → Fastify backend (no CORS needed)",
+      "state": {
+        "server": "TanStack React Query",
+        "client": "Zustand (stores: auth, theme, ui)"
+      },
+      "animation": "Framer Motion",
+      "ui_library": "Lucide React (icons)"
+    },
+    "backend": {
+      "framework": "Fastify (TypeScript)",
+      "port": 4000,
+      "dir": "apps/api",
+      "plugins": [
+        "@fastify/cors",
+        "@fastify/jwt",
+        "@fastify/cookie",
+        "@fastify/rate-limit"
+      ]
+    },
+    "database": {
+      "primary": "PostgreSQL 16 (port 5433 in Docker)",
+      "cache": "Redis 7 (port 6379 in Docker)",
+      "driver": "pg (node-postgres)",
+      "schema": "apps/api/src/db/schema.sql"
+    },
+    "shared_package": {
+      "dir": "packages/shared",
+      "contents": ["Zod schemas", "TypeScript enums", "Type definitions"]
+    },
+    "infrastructure": {
+      "docker": "docker-compose.yml (Postgres + Redis)",
+      "deploy": "Vercel (frontend), container host (backend)"
+    }
+  },
+
+  "main_flows": {
+    "authentication": {
+      "overview": "OAuth-only authentication via Google and GitHub. JWT stored in HTTP-only cookie.",
+      "providers": ["Google OAuth (primary)", "GitHub OAuth (secondary)"],
+      "auth_mechanism": "JWT in HTTP-only cookie + Bearer token fallback",
+      "flows": {
+        "login_google": {
+          "trigger": "User clicks 'Continue with Google' on /login",
+          "steps": [
+            "LoginPage generates PKCE challenge (SHA-256 code_verifier)",
+            "Stores PKCE verifier in sessionStorage('pkce_verifier')",
+            "Redirects to Google OAuth URL (response_type=code, code_challenge=S256)",
+            "Google redirects back to /api/auth/google/callback?code=xxx",
+            "GoogleCallback page reads ?code and pkce_verifier from sessionStorage",
+            "POSTs { code, code_verifier, redirect_uri } to /api/v1/auth/google (Fastify)",
+            "Fastify exchanges code for access_token with Google's token endpoint",
+            "Fetches user info from https://www.googleapis.com/oauth2/v2/userinfo",
+            "Creates or links user in PostgreSQL (by google_id or email)",
+            "Fastify signs JWT and sets HTTP-only cookie (7-day expiry, sameSite=lax)",
+            "Returns { token, user } to callback page",
+            "Callback sets Bearer token via api.setToken(token)",
+            "Callback redirects to /dashboard (client-side router.push)",
+            "Dashboard loads → AppContent calls checkSession → GET /api/v1/auth/session → cookie valid → returns user"
+          ],
+          "key_files": [
+            "apps/web/src/app/login/page.tsx",
+            "apps/web/src/app/api/auth/google/callback/page.tsx",
+            "apps/api/src/routes/auth.ts (POST /auth/google)",
+            "apps/web/src/lib/api.ts (loginWithGoogle)",
+            "apps/web/src/store/auth.ts"
+          ]
+        },
+        "login_github": {
+          "trigger": "User clicks 'Continue with GitHub' on /login",
+          "steps": [
+            "Redirects to GitHub OAuth URL",
+            "GitHub redirects back to /api/auth/github/callback?code=xxx",
+            "GithubCallback calls loginWithGithub(code) from auth store",
+            "Store posts { code } to /api/v1/auth/github (Fastify)",
+            "Fastify exchanges code for access_token with GitHub API",
+            "Fetches user info from https://api.github.com/user",
+            "Creates or links user in PostgreSQL (by github_id or email)",
+            "Sets HTTP-only cookie + returns { token, user }",
+            "Redirects to /dashboard"
+          ],
+          "key_files": [
+            "apps/web/src/app/api/auth/github/callback/page.tsx",
+            "apps/api/src/routes/auth.ts (POST /auth/github)",
+            "apps/web/src/store/auth.ts (loginWithGithub)"
+          ]
+        },
+        "session_check": {
+          "trigger": "Every protected page load via AppContent layout effect",
+          "steps": [
+            "AppContent calls checkSession() (unless on /login or /api/auth/*)",
+            "checkSession calls api.getSession() → GET /api/v1/auth/session",
+            "Fastify reads HTTP-only cookie, verifies JWT, fetches user from DB",
+            "If valid: returns { user, expires } → user set in Zustand store",
+            "If invalid (401): user stays null → routing effect redirects to /login"
+          ],
+          "key_files": [
+            "apps/web/src/app/layout.tsx (AppContent)",
+            "apps/web/src/store/auth.ts (checkSession)",
+            "apps/api/src/routes/auth.ts (GET /auth/session)"
+          ]
+        },
+        "logout": {
+          "trigger": "User clicks logout button in Navbar",
+          "steps": [
+            "Navbar calls logout() from auth store",
+            "store/auth.ts: sets ph_logged_out flag in sessionStorage (prevents stale session checks)",
+            "Clears Bearer token via api.setToken(null)",
+            "Sets user=null in Zustand store",
+            "POSTs to /api/v1/auth/logout (Fastify)",
+            "Fastify clears HTTP-only cookie via Set-Cookie: Max-Age=0",
+            "window.location.href = '/login' (full page navigation)",
+            "Login page loads → clears ph_logged_out → calls checkSession() → 401 → user null → stays on login"
+          ],
+          "key_files": [
+            "apps/web/src/components/layout/Navbar.tsx",
+            "apps/web/src/store/auth.ts (logout)",
+            "apps/api/src/routes/auth.ts (POST /auth/logout)"
+          ]
+        }
+      }
+    },
+
+    "project_management": {
+      "overview": "Full CRUD for projects with status, visibility, members, tasks, resources, activity tracking, and GitHub integration.",
+      "flows": {
+        "create_project": {
+          "trigger": "User clicks 'New Project' in Navbar or 'Create Project' on dashboard",
+          "steps": [
+            "Navbar sets createProjectOpen=true in UI store",
+            "Dashboard renders Modal with form (name, description, icon, status, visibility)",
+            "User fills form and clicks 'Create Project'",
+            "Dashboard calls api.createProject(form) → POST /api/v1/projects",
+            "Fastify creates project in DB with randomUUID, logs 'project_created' activity",
+            "Returns 201 with project data",
+            "Dashboard refetches project list, closes modal"
+          ],
+          "key_files": [
+            "apps/web/src/app/dashboard/page.tsx",
+            "apps/web/src/components/layout/Navbar.tsx",
+            "apps/api/src/routes/projects.ts (POST /projects)",
+            "apps/api/src/db/models.ts (createProject)"
+          ]
+        },
+        "view_project_detail": {
+          "trigger": "User clicks a project card on dashboard or navigates to /projects/:id",
+          "steps": [
+            "ProjectDetailPage mounts → calls api.getProject(id) → GET /api/v1/projects/:id",
+            "Fastify fetches project + members + tasks + resources + activity + linked_repo",
+            "Returns all data in a single response",
+            "Page renders: hero header, contribution graph, tabbed content (Tasks/Resources/Activity/Members)"
+          ],
+          "key_files": [
+            "apps/web/src/app/projects/[id]/page.tsx",
+            "apps/api/src/routes/projects.ts (GET /projects/:id)"
+          ]
+        },
+        "update_project": {
+          "trigger": "User clicks Edit on project detail page → modifies fields → Save",
+          "steps": [
+            "Opens Edit modal pre-filled with current values",
+            "User changes name/description/icon/status/visibility",
+            "Calls api.updateProject(id, edits) → PATCH /api/v1/projects/:id",
+            "Fastify validates ownership or role (admin/editor), updates DB",
+            "Returns updated project, page refreshes"
+          ],
+          "key_files": [
+            "apps/web/src/app/projects/[id]/page.tsx",
+            "apps/api/src/routes/projects.ts (PATCH /projects/:id)"
+          ]
+        },
+        "delete_project": {
+          "trigger": "User clicks trash icon on project card → confirms",
+          "steps": [
+            "ProjectCard calls api.deleteProject(id) → DELETE /api/v1/projects/:id",
+            "Fastify checks ownership (only owner can delete)",
+            "Cascading delete removes tasks, members, activity, resources, linked_repo",
+            "Returns success → list refreshes"
+          ],
+          "key_files": [
+            "apps/web/src/components/projects/ProjectCard.tsx",
+            "apps/api/src/routes/projects.ts (DELETE /projects/:id)"
+          ]
+        }
+      }
+    },
+
+    "task_management": {
+      "overview": "Tasks belong to projects, have priority (P0-P3), status lifecycle, subtasks, due dates, and assignment.",
+      "views": ["List view", "Kanban board view"],
+      "flows": {
+        "create_task": {
+          "trigger": "User clicks 'Add Task' in project detail → Tasks tab",
+          "steps": [
+            "Opens Create Task modal (title, description, priority, due_date)",
+            "Calls api.createTask(projectId, data) → POST /api/v1/projects/:id/tasks",
+            "Fastify creates task with auto-incrementing position (MAX(position)+100)",
+            "Returns 201 → task list refreshes"
+          ],
+          "key_files": [
+            "apps/web/src/components/tasks/TaskList.tsx",
+            "apps/api/src/routes/tasks.ts (POST /projects/:id/tasks)"
+          ]
+        },
+        "toggle_task_status": {
+          "trigger": "User clicks the circular checkbox next to a task",
+          "steps": [
+            "TaskList calls api.updateTask(taskId, { status: 'completed'|'pending' })",
+            "Fastify updates task in DB",
+            "If status changed TO 'completed': logs 'task_completed' activity (with double-check to avoid React StrictMode double-fire)",
+            "Task list refreshes"
+          ],
+          "key_files": [
+            "apps/web/src/components/tasks/TaskList.tsx (handleToggleStatus)",
+            "apps/api/src/routes/tasks.ts (PATCH /tasks/:taskId)"
+          ]
+        },
+        "kanban_move": {
+          "trigger": "User clicks status-change button on a Kanban card",
+          "steps": [
+            "KanbanBoard shows quick-action buttons → {status} for each non-current status",
+            "Click calls api.updateTask(taskId, { status: newStatus })",
+            "Fastify updates → board refreshes → card moves column"
+          ],
+          "key_files": [
+            "apps/web/src/components/tasks/KanbanBoard.tsx (handleStatusChange)"
+          ]
+        }
+      }
+    },
+
+    "contribution_graph": {
+      "overview": "GitHub-style activity heatmap showing 52 weeks of daily contributions per project.",
+      "flows": {
+        "load_graph": {
+          "trigger": "Project detail page renders ContributionGraph component",
+          "steps": [
+            "Fetches GET /api/v1/projects/:id/contribution-graph",
+            "Fastify queries activity_logs grouped by date for last 365 days",
+            "Builds 52×7 day grid with level (0-4) based on activity count",
+            "Returns { weeks: [[{date, count, level}]], total }",
+            "Component renders cells with CSS classes contribution-level-{0-4}"
+          ],
+          "key_files": [
+            "apps/web/src/components/projects/ContributionGraph.tsx",
+            "apps/api/src/routes/activity.ts (GET /contribution-graph)",
+            "apps/api/src/db/models.ts (getContributionData)"
+          ]
+        },
+        "log_activity": {
+          "trigger": "User clicks '+ Log Activity' button above the graph",
+          "steps": [
+            "Calls api.logActivity(projectId, { activity_type: 'time_logged' })",
+            "Fastify creates activity_logs entry with user_id, project_id, type, metadata",
+            "Graph refreshes to show new contribution"
+          ],
+          "key_files": [
+            "apps/web/src/components/projects/ContributionGraph.tsx (handleLogActivity)",
+            "apps/api/src/routes/activity.ts (POST /projects/:id/activity)"
+          ]
+        },
+        "streaks": {
+          "trigger": "Dashboard/Navbar loads streak data",
+          "steps": [
+            "Navbar calls api.getStreaks() → GET /api/v1/streaks",
+            "Fastify queries: COUNT(DISTINCT DATE(logged_at)) per project for user",
+            "Returns per-project total_active_days and last_activity_date",
+            "Sum displayed as flame icon with count in Navbar"
+          ],
+          "key_files": [
+            "apps/web/src/components/layout/Navbar.tsx (streakCount)",
+            "apps/api/src/routes/activity.ts (GET /streaks)",
+            "apps/api/src/db/models.ts (getStreaks)"
+          ]
+        }
+      }
+    },
+
+    "resources_links": {
+      "overview": "URL bookmarking with automatic Open Graph metadata extraction.",
+      "flows": {
+        "add_resource": {
+          "trigger": "User clicks 'Add Link' in Resources tab of project detail",
+          "steps": [
+            "Opens modal (URL, category, notes)",
+            "Calls api.addResource(projectId, data) → POST /api/v1/projects/:id/resources",
+            "Fastify fetches the URL, parses HTML for OG metadata (title, description, favicon, og:image)",
+            "Creates resource in DB, logs 'resource_added' activity",
+            "Returns 201 → resources list refreshes"
+          ],
+          "key_files": [
+            "apps/web/src/app/projects/[id]/page.tsx (handleAddResource)",
+            "apps/api/src/routes/resources.ts (POST /projects/:id/resources)"
+          ]
+        },
+        "delete_resource": {
+          "trigger": "User clicks trash icon on a resource card",
+          "steps": [
+            "Confirms, then DELETE /api/v1/resources/:resourceId",
+            "Fastify deletes from DB → list refreshes"
+          ]
+        }
+      }
+    },
+
+    "collaboration": {
+      "overview": "Friend system (search, request, accept) + project member management with roles.",
+      "flows": {
+        "search_users": {
+          "trigger": "User types 2+ characters in friends search bar",
+          "steps": [
+            "GET /api/v1/users/search?q=...",
+            "Fastify queries: LOWER(name) LIKE %q% OR LOWER(email) LIKE %q%, excludes current user",
+            "Returns matching users → displayed in dropdown with 'Add' button"
+          ],
+          "key_files": [
+            "apps/web/src/app/friends/page.tsx (handleSearch)",
+            "apps/api/src/routes/users.ts (GET /users/search)"
+          ]
+        },
+        "send_friend_request": {
+          "trigger": "User clicks 'Add' on a search result",
+          "steps": [
+            "POST /api/v1/friends/request with { user_id }",
+            "Fastify inserts friendships row with status='pending'",
+            "Creates notification for target user",
+            "Returns { sent: true }"
+          ],
+          "key_files": [
+            "apps/api/src/routes/collaboration.ts (POST /friends/request)"
+          ]
+        },
+        "accept_friend_request": {
+          "trigger": "User clicks 'Accept' on a pending request",
+          "steps": [
+            "POST /api/v1/friends/accept with { user_id }",
+            "Fastify updates friendships status to 'accepted'",
+            "Friends list refreshes"
+          ]
+        },
+        "add_member_to_project": {
+          "trigger": "Owner clicks 'Add Member' in project detail sidebar",
+          "steps": [
+            "Searches user by email, selects, assigns role",
+            "POST /api/v1/projects/:id/members with { user_id, role }",
+            "Fastify: inserts project_members, creates notification, logs 'member_added' activity",
+            "Returns 201 → members list refreshes"
+          ],
+          "key_files": [
+            "apps/web/src/app/projects/[id]/page.tsx (handleAddMember)",
+            "apps/api/src/routes/collaboration.ts (POST /projects/:id/members)"
+          ]
+        }
+      }
+    },
+
+    "github_integration": {
+      "overview": "Link GitHub repositories to projects and view repo metadata.",
+      "flows": {
+        "link_repo": {
+          "trigger": "User enters owner/repo in GitHub link modal",
+          "steps": [
+            "POST /api/v1/projects/:id/link-repo with { repo: 'owner/repo' }",
+            "Fastify inserts into linked_repos table (upsert by project_id)",
+            "Returns { linked: true, repo }"
+          ],
+          "key_files": [
+            "apps/api/src/routes/github.ts (POST /projects/:id/link-repo)"
+          ]
+        },
+        "repo_status": {
+          "trigger": "Project detail loads (automatic)",
+          "steps": [
+            "GET /api/v1/projects/:id/repo-status",
+            "Fastify fetches GitHub API for repo info (description, language, stars, pushed_at)",
+            "Returns combined linked_repo + repo_data",
+            "Displayed as GitHub badge on project detail"
+          ],
+          "key_files": [
+            "apps/api/src/routes/github.ts (GET /projects/:id/repo-status)"
+          ]
+        }
+      }
+    },
+
+    "notifications": {
+      "overview": "In-app notification system for friend requests, member invites, and task assignments.",
+      "flows": {
+        "list_notifications": {
+          "trigger": "User visits /notifications or sidebar notification bell",
+          "steps": [
+            "GET /api/v1/notifications → returns 50 most recent",
+            "Displays unread count badge in header"
+          ],
+          "key_files": [
+            "apps/web/src/app/notifications/page.tsx",
+            "apps/api/src/routes/notifications.ts"
+          ]
+        },
+        "mark_all_read": {
+          "trigger": "User clicks 'Mark all read'",
+          "steps": [
+            "PATCH /api/v1/notifications/read-all → Fastify sets read=true for all user's notifications"
+          ]
+        }
+      }
+    },
+
+    "user_settings": {
+      "overview": "User profile, dark/light theme toggle, timezone, streak preferences.",
+      "flows": {
+        "theme_toggle": {
+          "trigger": "User clicks sun/moon in Navbar or toggles switch in Settings",
+          "steps": [
+            "useThemeStore.toggle() sets isDark = !isDark",
+            "Saves to localStorage('theme') = 'dark'|'light'",
+            "Toggles 'dark' class on document.documentElement",
+            "CSS variables swap via :root (dark) vs :root:not(.dark) (light) selectors",
+            "Tailwind classes (bg-dark-800, border-dark-300, text-text-primary) reference var() → colors update automatically"
+          ],
+          "key_files": [
+            "apps/web/src/store/theme.ts",
+            "apps/web/src/components/layout/Navbar.tsx",
+            "apps/web/src/app/layout.tsx (inline script + init effect)",
+            "apps/web/tailwind.config.js (var() references)",
+            "apps/web/src/app/globals.css (:root:not(.dark) overrides)"
+          ]
+        },
+        "update_timezone": {
+          "trigger": "User changes timezone in Settings → Save",
+          "steps": [
+            "PATCH /api/v1/users/me with { timezone }",
+            "Fastify updates user in DB → returns updated user"
+          ],
+          "key_files": [
+            "apps/web/src/app/settings/page.tsx",
+            "apps/api/src/routes/users.ts (PATCH /users/me)"
+          ]
+        }
+      }
+    }
+  },
+
+  "data_model": {
+    "tables": [
+      {
+        "name": "users",
+        "columns": ["id (UUID PK)", "email (UNIQUE)", "name", "avatar_url", "google_id", "github_id", "timezone", "streak_preferences (JSONB)", "created_at", "updated_at"],
+        "indexes": ["google_id", "github_id", "email"]
+      },
+      {
+        "name": "projects",
+        "columns": ["id (UUID PK)", "owner_id (FK→users)", "name", "description", "icon", "status (ENUM: idea|in_progress|completed|archived)", "visibility (ENUM: private|friends|public)", "created_at", "updated_at"],
+        "indexes": ["owner_id", "status"]
+      },
+      {
+        "name": "project_members",
+        "columns": ["project_id (FK→projects)", "user_id (FK→users)", "role (ENUM: viewer|editor|admin)", "joined_at"],
+        "pk": "(project_id, user_id)"
+      },
+      {
+        "name": "tasks",
+        "columns": ["id (UUID PK)", "project_id (FK→projects)", "parent_task_id (self-ref, nullable)", "title", "description", "due_date", "priority (ENUM: p0-p3)", "position (float)", "estimated_hours", "status (ENUM: pending|in_progress|completed|cancelled)", "assignee_id (FK→users)", "created_by (FK→users)", "created_at", "updated_at"],
+        "indexes": ["project_id", "assignee_id", "parent_task_id"]
+      },
+      {
+        "name": "activity_logs",
+        "columns": ["id (UUID PK)", "user_id (FK→users)", "project_id (FK→projects)", "activity_type (ENUM)", "metadata (JSONB)", "logged_at"],
+        "indexes": ["project_id", "user_id", "logged_at", "(project_id, logged_at)"]
+      },
+      {
+        "name": "resources",
+        "columns": ["id (UUID PK)", "project_id (FK→projects)", "url", "title", "description", "favicon_url", "og_image_url", "category (ENUM)", "notes", "added_by (FK→users)", "created_at"]
+      },
+      {
+        "name": "friendships",
+        "columns": ["user_id_1 (FK→users)", "user_id_2 (FK→users)", "status (ENUM: pending|accepted|blocked)", "action_user_id", "created_at"],
+        "pk": "(user_id_1, user_id_2)",
+        "constraint": "user_id_1 <> user_id_2"
+      },
+      {
+        "name": "linked_repos",
+        "columns": ["id (UUID PK)", "project_id (UNIQUE, FK→projects)", "user_id (FK→users)", "github_repo_full_name", "last_fetched_at", "repo_data (JSONB)"]
+      },
+      {
+        "name": "notifications",
+        "columns": ["id (UUID PK)", "user_id (FK→users)", "type", "title", "body", "metadata (JSONB)", "read (boolean)", "created_at"],
+        "indexes": ["(user_id, read, created_at DESC)"]
+      }
+    ]
+  },
+
+  "api_endpoints": {
+    "prefix": "/api/v1",
+    "auth": { "google": "POST", "github": "POST", "session": "GET", "logout": "POST" },
+    "users": { "/me": "GET|PATCH", "/search?q=": "GET", "/:id": "GET" },
+    "projects": { "/": "GET|POST", "/:id": "GET|PATCH|DELETE" },
+    "tasks": { "/projects/:id/tasks": "GET|POST", "/tasks/:taskId": "PATCH|DELETE" },
+    "activity": { "/projects/:id/activity": "GET|POST", "/projects/:id/contribution-graph": "GET", "/streaks": "GET" },
+    "resources": { "/projects/:id/resources": "GET|POST", "/resources/:id": "DELETE" },
+    "collaboration": { "/friends": "GET", "/friends/request": "POST", "/friends/requests": "GET", "/friends/accept": "POST" },
+    "github": { "/projects/:id/link-repo": "POST", "/projects/:id/repo-status": "GET" },
+    "notifications": { "/": "GET", "/read-all": "PATCH" }
+  },
+
+  "key_components": {
+    "ui_library": {
+      "Button": { "file": "apps/web/src/components/ui/Button.tsx", "props": ["variant (primary|secondary|ghost|danger)", "size (sm|md|lg)", "isLoading"] },
+      "Card": { "file": "apps/web/src/components/ui/Card.tsx", "props": ["variant (default|glass|bordered)", "hover"] },
+      "Badge": { "file": "apps/web/src/components/ui/Badge.tsx", "exports": ["Badge", "StatusBadge"], "variants": ["default", "success", "warning", "danger", "info"] },
+      "Input": { "file": "apps/web/src/components/ui/Input.tsx", "exports": ["Input", "Textarea", "Select"] },
+      "Modal": { "file": "apps/web/src/components/ui/Modal.tsx", "features": ["AnimatePresence", "Escape to close", "Overlay click to close"] }
+    },
+    "layout": {
+      "AppContent": { "file": "apps/web/src/app/layout.tsx", "role": "Root layout wrapper: auth guard, loading spinner, dark mode init, session checks" },
+      "Sidebar": { "file": "apps/web/src/components/layout/Sidebar.tsx", "items": ["Dashboard", "Projects", "Friends", "Notifications", "Settings"], "features": ["Collapsible", "Active state highlighting"] },
+      "Navbar": { "file": "apps/web/src/components/layout/Navbar.tsx", "features": ["New Project button", "Streak flame", "Dark mode toggle", "Logout"] }
+    },
+    "project": {
+      "ProjectCard": { "file": "apps/web/src/components/projects/ProjectCard.tsx", "features": ["Status badge", "Progress bar", "Time ago", "Delete"] },
+      "ContributionGraph": { "file": "apps/web/src/components/projects/ContributionGraph.tsx", "features": ["52-week grid", "5-level color scale", "Log Activity button"] }
+    },
+    "tasks": {
+      "TaskList": { "file": "apps/web/src/components/tasks/TaskList.tsx", "features": ["Create/Edit/Delete/Toggle", "Subtasks (expandable)", "Priority sort", "Overdue detection"] },
+      "KanbanBoard": { "file": "apps/web/src/components/tasks/KanbanBoard.tsx", "columns": ["Yet to Start", "In Progress", "Completed", "Cancelled"], "features": ["Inline edit", "Quick status change", "Double-click to rename"] }
+    }
+  },
+
+  "stores": {
+    "auth (Zustand)": {
+      "file": "apps/web/src/store/auth.ts",
+      "state": ["user (User|null)", "isLoading (boolean)"],
+      "actions": ["setUser", "loginWithGoogle(accessToken)", "loginWithGithub(code)", "logout()", "checkSession()"]
+    },
+    "theme (Zustand)": {
+      "file": "apps/web/src/store/theme.ts",
+      "state": ["isDark (boolean)"],
+      "actions": ["toggle()", "setDark(dark)"],
+      "persistence": "localStorage('theme')"
+    },
+    "ui (Zustand)": {
+      "file": "apps/web/src/store/ui.ts",
+      "state": ["sidebarOpen (boolean)", "createProjectOpen (boolean)"],
+      "actions": ["toggleSidebar()", "setCreateProjectOpen(open)"]
+    }
+  },
+
+  "design_system": {
+    "name": "Landa",
+    "base": "Dark theme with light mode support",
+    "colors": {
+      "accent": "#09bc8a (teal, primary interactive)",
+      "accent_light": "#69ecbf (light teal, highlights)",
+      "bg_dark": "#010907 (deep dark, default background)",
+      "bg_card": "#0a1a15 (card background)",
+      "text_primary": "#f4f7f5 (off-white, primary text)",
+      "text_secondary": "#8da39a (muted text)",
+      "text_muted": "#6a867a (subdued text)",
+      "border": "#1f332b (borders and dividers)",
+      "semantic": { "success": "#eac66a", "warning": "#eb7644", "info": "#4592ed", "danger": "#ef4444" }
+    },
+    "typography": {
+      "primary": "Inter, system-ui, sans-serif",
+      "mono": "Geist Mono, monospace",
+      "display": "Clash Display, Inter Display, serif",
+      "scale": { "h1": "72px/80px", "h2": "56px/64px", "h3": "32px/40px", "h4": "24px/28px", "h5": "20px/28px", "h6": "18px/28px", "body": "16px/24px", "sm": "14px/20px", "xs": "12px/16px" }
+    },
+    "spacing": { "base": "1px", "scale": ["1px", "4px", "5px", "6px", "7px", "8px", "10px", "12px", "14px", "15px", "16px", "18px"] },
+    "border_radius": { "sm": "5px", "md": "8px", "lg": "15px", "xl": "24px", "2xl": "40px", "pill": "999px" },
+    "shadows": { "xs": "rgba(0,0,0,0.05) 0px 10px 20px", "sm": "...multi-layer...", "md": "...inset glow..." },
+    "breakpoints": { "md": "810px", "lg": "1199px", "xl": "1440px" },
+    "transitions": "color 0.45s cubic-bezier(0.44, 0, 0.56, 1)"
+  },
+
+  "known_issues": {
+    "react_strictmode_double_fire": "Effects fire twice in dev. Handled in task completion (double-check) and checkSession guards.",
+    "api_client_cors": "Removed — API calls now go same-origin via Next.js rewrites() in next.config.js. No CORS needed.",
+    "dark_mode_flash_fix": "Inline <script> in <head> reads localStorage and removes 'dark' class before React hydrates. suppressHydrationWarning on <html>.",
+    "logout_reverse": "AppContent skips checkSession on /login and /api/auth/* paths to prevent re-auth race after logout.",
+    "tailwind_dynamic_classes": "Dashboard stat labels changed from dynamic interpolation 'text-${color}' to static 'text-accent' etc. Tailwind cannot tree-shake dynamically constructed class names.",
+    "contribution_graph_months": "Month labels now use weekIndex math (weekIndex / 4.3 % 12) instead of i % 4 filter to align correctly across 52 weeks.",
+    "settings_streak_prefs": "Streak checkboxes are now controlled components with onChange handlers that immediately persist via api.updateProfile().",
+    "project_card_null_date": "getTimeAgo() now returns empty string for null/missing dates instead of crashing."
+  },
+
+  "file_index": {
+    "root": ["package.json", "turbo.json", "docker-compose.yml", "vercel.json", "README.md", "SRS.md", "landa-design-system.md"],
+    "apps/web/src/app": ["layout.tsx", "page.tsx (redirects to /dashboard)", "globals.css", "login/page.tsx", "dashboard/page.tsx", "projects/page.tsx", "projects/[id]/page.tsx", "friends/page.tsx", "notifications/page.tsx", "settings/page.tsx"],
+    "apps/web/src/app/api": ["auth/google/callback/page.tsx", "auth/github/callback/page.tsx", "v1/[...slug]/route.ts (Next.js API proxy)"],
+    "apps/web/src/components": ["ui/Button.tsx", "ui/Card.tsx", "ui/Badge.tsx", "ui/Input.tsx", "ui/Modal.tsx", "layout/Sidebar.tsx", "layout/Navbar.tsx", "projects/ProjectCard.tsx", "projects/ContributionGraph.tsx", "tasks/TaskList.tsx", "tasks/KanbanBoard.tsx"],
+    "apps/web/src/lib": ["api.ts (ApiClient class + singleton)", "auth.ts (JWT sign/verify + cookie)", "db.ts (Neon serverless)"],
+    "apps/web/src/store": ["auth.ts (Zustand)", "theme.ts (Zustand)", "ui.ts (Zustand)"],
+    "apps/api/src": ["index.ts (Fastify server entry)", "middleware/auth.ts", "routes/auth.ts", "routes/users.ts", "routes/projects.ts", "routes/tasks.ts", "routes/activity.ts", "routes/resources.ts", "routes/collaboration.ts", "routes/github.ts", "routes/notifications.ts", "db/pool.ts", "db/models.ts", "db/schema.sql", "seed.ts"],
+    "packages/shared/src": ["enums.ts (Zod enums)", "schemas.ts (Zod schemas)", "index.ts (re-exports)"]
+  }
+}

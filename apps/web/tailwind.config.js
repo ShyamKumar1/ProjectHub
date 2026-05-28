@@ -34,28 +34,34 @@ module.exports = {
           400: '#1cdd9c',
           500: '#14c48a',
         },
-        // Dark theme backgrounds
+        // Dark theme backgrounds (uses CSS vars for light/dark switching)
         dark: {
           50: '#f4f7f5',
           100: '#d5ddd9',
           200: '#b3c0b8',
-          300: '#8da39a',
-          400: '#6a867a',
+          300: 'var(--color-border)',
+          400: 'var(--color-text-muted)',
           500: '#4d6a5d',
           600: '#354e43',
-          700: '#1f332b',
-          800: '#010907',
+          700: 'var(--color-bg-card)',
+          800: 'var(--color-bg-dark)',
           900: '#000403',
-          DEFAULT: '#010907',
+          DEFAULT: 'var(--color-bg-dark)',
         },
         // Neutral light
         neutral: {
           50: '#ffffff',
-          100: '#f4f7f5',
+          100: 'var(--color-bg-surface)',
           200: '#e8ede9',
           300: '#d5ddd9',
           400: '#b3c0b8',
-          DEFAULT: '#f4f7f5',
+          DEFAULT: 'var(--color-bg-surface)',
+        },
+        // Text colors (theme-aware)
+        text: {
+          primary: 'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
         },
         // Semantic
         success: '#eac66a',

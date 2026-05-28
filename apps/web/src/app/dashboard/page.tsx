@@ -79,14 +79,14 @@ export default function DashboardPage() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Projects', value: projects.length, color: 'accent' },
-          { label: 'In Progress', value: statusCounts.in_progress, color: 'info' },
-          { label: 'Ideas', value: statusCounts.idea, color: 'warning' },
-          { label: 'Completed', value: statusCounts.completed, color: 'success' },
+          { label: 'Total Projects', value: projects.length, colorClass: 'text-accent' },
+          { label: 'In Progress', value: statusCounts.in_progress, colorClass: 'text-info' },
+          { label: 'Ideas', value: statusCounts.idea, colorClass: 'text-warning' },
+          { label: 'Completed', value: statusCounts.completed, colorClass: 'text-success' },
         ].map((stat) => (
           <div key={stat.label} className="bg-dark-800/60 backdrop-blur-sm border border-dark-300 rounded-xl p-4">
             <p className="text-sm text-text-muted">{stat.label}</p>
-            <p className={`text-h3 font-medium mt-1 text-${stat.color}`}>{stat.value}</p>
+            <p className={`text-h3 font-medium mt-1 ${stat.colorClass}`}>{stat.value}</p>
           </div>
         ))}
       </div>

@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProjectHub — Architecture &amp; Flows Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #09bc8a;
+  --accent-light: #69ecbf;
+  --bg-dark: #010907;
+  --bg-card: #0a1a15;
+  --bg-card-hover: #0f221c;
+  --bg-surface: #f4f7f5;
+  --text-primary: #f4f7f5;
+  --text-secondary: #8da39a;
+  --text-muted: #6a867a;
+  --border: #1f332b;
+  --border-focus: #09bc8a;
+  --success: #eac66a;
+  --warning: #eb7644;
+  --info: #4592ed;
+  --danger: #ef4444;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 15px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --transition: 0.45s cubic-bezier(0.44, 0, 0.56, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 100px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+/* Layout */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(1,9,7,0.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header h1 { font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+.header h1 .flame { color: var(--accent); }
+.header-version { font-size: 12px; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: var(--radius-pill); border: 1px solid var(--border); }
+.container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+/* TOC */
+.toc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 40px; }
+.toc h2 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--accent); }
+.toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.toc a { color: var(--text-secondary); text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: var(--radius-sm); display: block; transition: all var(--transition); }
+.toc a:hover { color: var(--accent); background: rgba(9,188,138,0.08); }
+/* Sections */
+.section { margin-bottom: 48px; }
+.section-header { margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+.section-header h2 { font-size: 22px; font-weight: 500; }
+.section-header .badge { font-size: 11px; padding: 2px 10px; border-radius: var(--radius-pill); background: rgba(9,188,138,0.12); color: var(--accent); border: 1px solid rgba(9,188,138,0.2); }
+/* Cards */
+.flow-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px; transition: border-color var(--transition); }
+.flow-card:hover { border-color: rgba(9,188,138,0.3); }
+.flow-card h3 { font-size: 15px; font-weight: 500; margin-bottom: 8px; color: var(--accent-light); display: flex; align-items: center; gap: 8px; }
+.flow-card .overview { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.7; }
+.flow-card .trigger { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.flow-card .trigger strong { color: var(--text-secondary); }
+/* Steps */
+.steps { list-style: none; padding: 0; }
+.steps li { position: relative; padding: 5px 0 5px 28px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.65; }
+.steps li::before { content: ''; position: absolute; left: 0; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: 0.5; }
+.steps li:first-child::before { background: var(--accent); opacity: 1; box-shadow: 0 0 8px rgba(9,188,138,0.4); }
+/* Key Files */
+.key-files { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
+.key-file { font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; border-radius: var(--radius-sm); background: rgba(9,188,138,0.06); border: 1px solid rgba(9,188,138,0.1); color: var(--text-muted); white-space: nowrap; }
+/* Architecture diagram */
+.diagram { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 32px; text-align: center; }
+.diagram pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.8; color: var(--text-secondary); text-align: left; display: inline-block; }
+.diagram .highlight { color: var(--accent); }
+.diagram .dim { color: var(--text-muted); }
+/* Data model table */
+.dtable { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px; }
+.dtable th { text-align: left; font-weight: 500; color: var(--accent); padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.dtable td { padding: 7px 12px; border-bottom: 1px solid rgba(31,51,43,0.4); color: var(--text-secondary); vertical-align: top; }
+.dtable td:first-child { color: var(--text-primary); font-weight: 450; white-space: nowrap; }
+.dtable .col { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); }
+/* API table */
+.api-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; }
+.api-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-mono); }
+.api-method { font-weight: 600; font-size: 10px; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; }
+.method-GET { color: var(--accent); background: rgba(9,188,138,0.1); }
+.method-POST { color: var(--info); background: rgba(69,146,237,0.1); }
+.method-PATCH { color: var(--warning); background: rgba(235,118,68,0.1); }
+.method-DELETE { color: var(--danger); background: rgba(239,68,68,0.1); }
+.api-path { color: var(--text-primary); }
+/* Component Grid */
+.comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.comp-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.comp-card h4 { font-size: 13px; font-weight: 500; color: var(--accent-light); margin-bottom: 4px; }
+.comp-card .path { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
+.comp-card p { font-size: 11.5px; color: var(--text-secondary); line-height: 1.6; }
+.comp-card .features { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 3px; }
+.comp-card .features span { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(9,188,138,0.06); border: 1px solid rgba(9,188,138,0.1); color: var(--text-muted); }
+/* Tags */
+.tag { display: inline-block; font-size: 10px; padding: 1px 8px; border-radius: var(--radius-pill); margin-right: 4px; }
+.tag-fe { background: rgba(69,146,237,0.12); color: var(--info); border: 1px solid rgba(69,146,237,0.2); }
+.tag-be { background: rgba(9,188,138,0.12); color: var(--accent); border: 1px solid rgba(9,188,138,0.2); }
+.tag-db { background: rgba(234,198,106,0.12); color: var(--success); border: 1px solid rgba(234,198,106,0.2); }
+/* Grid layout for flow cards */
+.flow-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.flow-grid .flow-card { margin-bottom: 0; }
+/* Color swatches */
+.swatch-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.swatch { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.swatch-dot { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+/* Legend for data model */
+.model-section { margin-bottom: 24px; }
+.model-section h3 { font-size: 14px; font-weight: 500; color: var(--accent-light); margin-bottom: 8px; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+/* Store cards */
+.store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.store-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.store-card h4 { font-size: 13px; font-weight: 500; color: var(--accent-light); margin-bottom: 6px; }
+.store-card .path { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-bottom: 8px; }
+.store-card .state-item { font-size: 11.5px; color: var(--text-secondary); padding: 2px 0; }
+.store-card .state-item span { color: var(--text-muted); font-family: var(--font-mono); font-size: 10.5px; }
+
+/* ─── ComfyUI-style Node Flow Map ─────────────── */
+.node-map-wrap { position: relative; background: radial-gradient(ellipse 900px 500px at 50% 40%, rgba(9,188,138,0.04) 0%, transparent 70%); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.node-map-controls { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(10,26,21,0.6); }
+.node-map-controls .zoom-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.node-map-controls .zoom-btn:hover { color: var(--text-primary); border-color: var(--accent); background: rgba(9,188,138,0.08); }
+.node-map-controls .zoom-level { font-size: 11px; color: var(--text-muted); min-width: 32px; text-align: center; font-family: var(--font-mono); }
+.node-map-controls .node-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.node-map-viewport { position: relative; overflow: auto; padding: 0; min-height: 520px; }
+.node-map-viewport::-webkit-scrollbar { height: 8px; }
+.node-map-viewport::-webkit-scrollbar-track { background: var(--bg-dark); }
+.node-map-viewport::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.node-canvas { position: relative; width: 1240px; height: 700px; transform-origin: top left; transition: transform 0.25s ease; }
+/* SVG connection lines */
+.connections { position: absolute; top: 0; left: 0; width: 1240px; height: 700px; pointer-events: none; z-index: 0; }
+.connections line, .connections path { stroke: var(--accent); stroke-width: 1.2; fill: none; opacity: 0.25; }
+.connections .flow-solid { stroke-width: 1.5; opacity: 0.4; }
+.connections .flow-dash { stroke-dasharray: 5,4; opacity: 0.25; }
+.connections .flow-thick { stroke-width: 2; opacity: 0.5; }
+/* Node base */
+.node { position: absolute; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); z-index: 1; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.35); transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s; user-select: none; }
+.node:hover { border-color: var(--accent); box-shadow: 0 0 30px rgba(9,188,138,0.15); transform: translateY(-1px); z-index: 2; }
+.node:active { transform: scale(0.98); }
+.node-header { padding: 7px 12px; border-radius: var(--radius-md) var(--radius-md) 0 0; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.node-body { padding: 6px 12px 8px; font-size: 10px; line-height: 1.5; color: var(--text-secondary); }
+.node-body .slot { display: flex; align-items: center; gap: 5px; padding: 1.5px 0; }
+.node-body .slot .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.node-body .slot .dot-in { background: var(--info); box-shadow: 0 0 6px rgba(69,146,237,0.4); }
+.node-body .slot .dot-out { background: var(--accent); box-shadow: 0 0 6px rgba(9,188,138,0.4); }
+.node-body .slot .dot-db { background: var(--success); box-shadow: 0 0 6px rgba(234,198,106,0.3); }
+.node-body .slot .label { font-size: 9.5px; color: var(--text-muted); }
+.node-body .slot span:not(.dot):not(.label) { font-size: 10px; color: var(--text-secondary); }
+.node-body .slot .arrow { color: var(--text-muted); font-size: 9px; }
+/* Node header gradients */
+.node-purple .node-header { background: linear-gradient(135deg, #2d1b69, #1a0a3e); color: #c4b5fd; }
+.node-teal .node-header { background: linear-gradient(135deg, #0f5c4a, #0a3d32); color: var(--accent-light); }
+.node-blue .node-header { background: linear-gradient(135deg, #1a3a5c, #0e2438); color: var(--info); }
+.node-green .node-header { background: linear-gradient(135deg, #1d3d1d, #0f260f); color: var(--accent); }
+.node-amber .node-header { background: linear-gradient(135deg, #4a3820, #2d2010); color: var(--success); }
+.node-rose .node-header { background: linear-gradient(135deg, #4a2030, #2d1018); color: #fca5a5; }
+/* Node dimensions */
+.nd { position: absolute; }
+.n0 { top: 18px; left: 14px; width: 170px; }
+.n1 { top: 18px; left: 230px; width: 180px; }
+.n2 { top: 116px; left: 230px; width: 180px; }
+.n3 { top: 18px; left: 456px; width: 200px; }
+.n4 { top: 128px; left: 456px; width: 200px; }
+.n5 { top: 256px; left: 456px; width: 200px; }
+.n6 { top: 18px; left: 700px; width: 200px; }
+.n7 { top: 146px; left: 700px; width: 200px; }
+.n8 { top: 274px; left: 700px; width: 200px; }
+.n9 { top: 382px; left: 700px; width: 200px; }
+.n10 { top: 478px; left: 700px; width: 200px; }
+.n11 { top: 570px; left: 700px; width: 200px; }
+.n12 { top: 100px; left: 950px; width: 200px; }
+/* Column labels */
+.col-label { position: absolute; font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); opacity: 0.35; pointer-events: none; }
+.col-label-1 { top: 690px; left: 14px; }
+.col-label-2 { top: 690px; left: 230px; }
+.col-label-3 { top: 690px; left: 456px; }
+.col-label-4 { top: 690px; left: 700px; }
+.col-label-5 { top: 690px; left: 950px; }
+/* Detail panel */
+.detail-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: none; align-items: center; justify-content: center; }
+.detail-panel.active { display: flex; }
+.detail-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); }
+.detail-card { position: relative; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-lg); max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: detailIn 0.25s ease; }
+@keyframes detailIn { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.detail-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.detail-card-header h3 { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.detail-card-close { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.detail-card-close:hover { color: var(--text-primary); border-color: var(--danger); background: rgba(239,68,68,0.1); }
+.detail-card-body { padding: 16px 20px 20px; }
+.detail-card-body .detail-section { margin-bottom: 14px; }
+.detail-card-body .detail-section:last-child { margin-bottom: 0; }
+.detail-card-body h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); margin-bottom: 6px; }
+.detail-card-body p, .detail-card-body li { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.detail-card-body ul { list-style: none; padding: 0; }
+.detail-card-body ul li { padding: 2px 0; }
+.detail-card-body ul li::before { content: '→ '; color: var(--accent); opacity: 0.6; }
+.detail-card-body .file-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.detail-card-body .file-list span { font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(9,188,138,0.06); border: 1px solid rgba(9,188,138,0.1); color: var(--text-muted); }
+/* Node active state */
+.node.active-node { border-color: var(--accent); box-shadow: 0 0 30px rgba(9,188,138,0.2); z-index: 3; }
+.node.active-node::after { content: ''; position: absolute; inset: -2px; border-radius: calc(var(--radius-md) + 2px); border: 1px solid var(--accent); opacity: 0.4; animation: nodePulse 2s ease-in-out infinite; }
+@keyframes nodePulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+/* Legend */
+.node-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 12px 16px; border-top: 1px solid var(--border); background: rgba(10,26,21,0.4); }
+.node-legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); }
+.node-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.node-legend-line { display: inline-block; width: 20px; height: 0; vertical-align: middle; }
+/* No-drag hint */
+.no-drag { font-size: 11px; color: var(--text-muted); padding: 8px 0; text-align: center; border-top: 1px solid var(--border); opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="flame">🔥</span> ProjectHub</h1>
+  <span class="header-version">v1.0 · Architecture &amp; Flows Reference</span>
+</div>
+
+<div class="container">
+
+<!-- ───────────── ARCHITECTURE DIAGRAM ───────────── -->
+<div class="section">
+  <div class="section-header"><h2>🏗️ Architecture</h2><span class="badge">Monorepo · Turborepo</span></div>
+  <div class="diagram">
+<pre>
+<span class="highlight">apps/web</span>  <span class="dim">(Next.js 14 · App Router · :3000)</span>
+  ┌─────────────────────────────────────────────┐
+  │  Pages:                                     │
+  │  /login   /dashboard   /projects/:id        │
+  │  /friends  /notifications  /settings         │
+  │                                              │
+  │  Components:                                 │
+  │  Sidebar  Navbar  ProjectCard  TaskList      │
+  │  KanbanBoard  ContributionGraph  Modal       │
+  │                                              │
+  │  State:  Zustand(auth/theme/ui)  React Query │
+  │  Rewrites: /api/v1/* → Fastify backend       │
+  └──────────┬──────────────────────────────────┘
+             │  Next.js rewrites (same origin, no CORS)
+             ▼
+<span class="highlight">apps/api</span>  <span class="dim">(Fastify · TypeScript · :4000)</span>
+  ┌─────────────────────────────────────────────┐
+  │  Routes:                                     │
+  │  /auth/*  /users/*  /projects/*  /tasks/*    │
+  │  /activity/*  /resources/*  /friends/*       │
+  │  /github/*  /notifications/*                 │
+  │                                              │
+  │  Middleware:  JWT verify  CORS  Rate limit   │
+  │  Auth:  HTTP-only cookie + Bearer token      │
+  └──────────┬──────────────────────────────────┘
+             │  pg (node-postgres)
+             ▼
+<span class="highlight">PostgreSQL 16</span>  <span class="dim">(:5433 · Docker)</span>
+  ┌─────────────────────────────────────────────┐
+  │  Tables:  users  projects  project_members  │
+  │  tasks  activity_logs  resources            │
+  │  friendships  linked_repos  notifications   │
+  └─────────────────────────────────────────────┘
+<span class="dim">Redis 7 (:6379 · Docker) — caching / sessions</span>
+</pre>
+  </div>
+</div>
+
+<!-- ───────────── COMFYUI-STYLE NODE FLOW MAP ───────────── -->
+<div id="flow-map" class="section">
+  <div class="section-header"><h2>🕸️ Full Project Flow Map</h2><span class="badge">ComfyUI-style · click any node</span></div>
+  <p style="margin-bottom:16px;color:var(--text-secondary);font-size:13px;">
+    End-to-end data flow showing how every component connects. <strong>Click any node</strong> for detailed information including key files and step-by-step flow.
+    Scroll horizontally to see the full graph. Lines show the direction of data flow.
+  </p>
+
+  <div class="node-map-wrap">
+    <!-- Toolbar -->
+    <div class="node-map-controls">
+      <button class="zoom-btn" onclick="zoomNodeMap(0.75)" title="Zoom out">−</button>
+      <span class="zoom-level" id="zoomLevel">100%</span>
+      <button class="zoom-btn" onclick="zoomNodeMap(1.25)" title="Zoom in">+</button>
+      <button class="zoom-btn" onclick="zoomNodeMap(1)" title="Reset zoom" style="font-size:10px;letter-spacing:-1px;">⟲</button>
+      <span class="node-count">13 nodes · 5 layers</span>
+    </div>
+
+    <div class="node-map-viewport" id="nodeViewport">
+      <div class="node-canvas" id="nodeCanvas">
+
+        <!-- SVG connections -->
+        <svg class="connections">
+          <defs>
+            <marker id="arrowHead" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="var(--accent)" opacity="0.35"/></marker>
+          </defs>
+          <!-- Row 1: Browser → Login Page → Callbacks → API Auth → DB -->
+          <line x1="184" y1="48" x2="230" y2="48" class="flow-thick" marker-end="url(#arrowHead)" />
+          <line x1="410" y1="48" x2="456" y2="48" class="flow-thick" marker-end="url(#arrowHead)" />
+          <line x1="656" y1="48" x2="700" y2="48" class="flow-thick" marker-end="url(#arrowHead)" />
+          <line x1="900" y1="48" x2="950" y2="130" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- Browser → OAuth Provider (external) -->
+          <line x1="130" y1="64" x2="230" y2="148" stroke-dasharray="5,4" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- OAuth Provider → Callbacks (return) -->
+          <path d="M 410 148 C 480 148, 520 80, 456 64" stroke-dasharray="5,4" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- Login Page → Auth Store (checkSession) -->
+          <line x1="320" y1="56" x2="456" y2="158" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- Auth Store → App Pages (auth guard) -->
+          <line x1="556" y1="175" x2="556" y2="256" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- App Pages → API CRUD -->
+          <line x1="656" y1="295" x2="700" y2="185" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- App Pages → API Collab -->
+          <line x1="656" y1="305" x2="700" y2="310" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- App Pages → API GitHub -->
+          <line x1="656" y1="315" x2="700" y2="415" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- App Pages → API Notifications -->
+          <line x1="656" y1="320" x2="700" y2="510" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- API CRUD → DB -->
+          <line x1="900" y1="185" x2="950" y2="150" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- API Collab → DB -->
+          <line x1="900" y1="310" x2="950" y2="170" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- API GitHub → DB -->
+          <line x1="900" y1="415" x2="950" y2="190" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- API Notifications → DB -->
+          <line x1="900" y1="510" x2="950" y2="210" class="flow-solid" marker-end="url(#arrowHead)" />
+          <!-- Middleware rings all API -->
+          <rect x="690" y="8" width="220" height="650" rx="12" fill="none" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3,4" opacity="0.15" />
+          <!-- Session return (dashed back) -->
+          <path d="M 750 80 C 550 80, 500 170, 456 170" stroke-dasharray="4,5" class="flow-dash" marker-end="url(#arrowHead)" />
+        </svg>
+
+        <!-- Column labels -->
+        <span class="col-label col-label-1">User Entry</span>
+        <span class="col-label col-label-2">Auth Layer</span>
+        <span class="col-label col-label-3">Frontend</span>
+        <span class="col-label col-label-4">Backend API</span>
+        <span class="col-label col-label-5">Database</span>
+
+        <!-- N0: Browser -->
+        <div class="node n0 node-purple nd" onclick="showNodeDetail('browser')">
+          <div class="node-header">🌐 User Browser</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-out"></span> Navigate to :3000</div>
+            <div class="slot"><span class="dot dot-out"></span> Click OAuth button</div>
+            <div class="slot"><span class="dot dot-out"></span> Interact with UI</div>
+          </div>
+        </div>
+
+        <!-- N1: Login Page -->
+        <div class="node n1 node-teal nd" onclick="showNodeDetail('login')">
+          <div class="node-header">🖥️ Login Page</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-in"></span> <span class="label">page load</span></div>
+            <div class="slot"><span class="dot dot-out"></span> Google OAuth redirect</div>
+            <div class="slot"><span class="dot dot-out"></span> GitHub OAuth redirect</div>
+            <div class="slot"><span class="dot dot-out"></span> checkSession()</div>
+          </div>
+        </div>
+
+        <!-- N2: OAuth Provider -->
+        <div class="node n2 node-rose nd" onclick="showNodeDetail('oauth')">
+          <div class="node-header">🌍 OAuth Providers</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-in"></span> <span class="label">Google PKCE challenge</span></div>
+            <div class="slot"><span class="dot dot-out"></span> Authorization code</div>
+            <div class="slot" style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.05);"><span class="dot dot-in"></span> <span class="label">GitHub OAuth</span></div>
+            <div class="slot"><span class="dot dot-out"></span> Authorization code</div>
+          </div>
+        </div>
+
+        <!-- N3: OAuth Callbacks -->
+        <div class="node n3 node-blue nd" onclick="showNodeDetail('callbacks')">
+          <div class="node-header">🔄 OAuth Callbacks</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-in"></span> <span class="label">/api/auth/google/callback</span></div>
+            <div class="slot"><span class="dot dot-in"></span> <span class="label">/api/auth/github/callback</span></div>
+            <div class="slot"><span class="dot dot-out"></span> POST /api/v1/auth/{provider}</div>
+            <div class="slot"><span class="dot"></span> <span class="arrow">→</span> router.push('/dashboard')</div>
+          </div>
+        </div>
+
+        <!-- N4: Auth Store -->
+        <div class="node n4 node-blue nd" onclick="showNodeDetail('authstore')">
+          <div class="node-header">🔍 Auth Store + checkSession</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-in"></span> <span class="label">GET /api/v1/auth/session</span></div>
+            <div class="slot"><span class="dot dot-out"></span> <span class="label">Sets user in Zustand</span></div>
+            <div class="slot"><span class="dot"></span> Guards all pages via layout</div>
+            <div class="slot"><span class="dot"></span> On 401 → redirect to /login</div>
+          </div>
+        </div>
+
+        <!-- N5: App Pages -->
+        <div class="node n5 node-blue nd" onclick="showNodeDetail('pages')">
+          <div class="node-header">📄 App Pages</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot"></span> /dashboard — Project grid + search</div>
+            <div class="slot"><span class="dot"></span> /projects/:id — Tabs (Tasks/Resources/Activity/Members)</div>
+            <div class="slot"><span class="dot"></span> /friends — Search + requests</div>
+            <div class="slot"><span class="dot"></span> /notifications — Bell list</div>
+            <div class="slot"><span class="dot"></span> /settings — Profile + theme + timezone</div>
+          </div>
+        </div>
+
+        <!-- N6: API Auth -->
+        <div class="node n6 node-green nd" onclick="showNodeDetail('apiauth')">
+          <div class="node-header">🔑 API Auth Routes</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-in"></span> POST /auth/google</div>
+            <div class="slot"><span class="dot dot-in"></span> POST /auth/github</div>
+            <div class="slot"><span class="dot dot-in"></span> GET /auth/session</div>
+            <div class="slot"><span class="dot dot-in"></span> POST /auth/logout</div>
+            <div class="slot"><span class="dot dot-out"></span> JWT + HTTP-only cookie</div>
+          </div>
+        </div>
+
+        <!-- N7: API CRUD -->
+        <div class="node n7 node-green nd" onclick="showNodeDetail('apicrud')">
+          <div class="node-header">📦 API CRUD Routes</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot"></span> /users/* — Profile + search</div>
+            <div class="slot"><span class="dot"></span> /projects/* — Full CRUD</div>
+            <div class="slot"><span class="dot"></span> /tasks/* — List + Kanban</div>
+            <div class="slot"><span class="dot"></span> /activity/* — Graph + streaks</div>
+            <div class="slot"><span class="dot"></span> /resources/* — OG metadata fetch</div>
+          </div>
+        </div>
+
+        <!-- N8: API Collab -->
+        <div class="node n8 node-green nd" onclick="showNodeDetail('apicollab')">
+          <div class="node-header">👥 API Collab Routes</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot"></span> /friends/* — Requests / accept</div>
+            <div class="slot"><span class="dot"></span> /projects/:id/members — CRUD roles</div>
+            <div class="slot"><span class="dot"></span> Creates notifications on actions</div>
+          </div>
+        </div>
+
+        <!-- N9: API GitHub -->
+        <div class="node n9 node-green nd" onclick="showNodeDetail('apigh')">
+          <div class="node-header">🐙 API GitHub Routes</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot"></span> POST /link-repo</div>
+            <div class="slot"><span class="dot"></span> GET /repo-status</div>
+            <div class="slot"><span class="label">Fetches GitHub API → repo_data</span></div>
+          </div>
+        </div>
+
+        <!-- N10: API Notif -->
+        <div class="node n10 node-green nd" onclick="showNodeDetail('apinotif')">
+          <div class="node-header">🔔 API Notification Routes</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot"></span> GET /notifications</div>
+            <div class="slot"><span class="dot"></span> PATCH /notifications/read-all</div>
+          </div>
+        </div>
+
+        <!-- N11: Middleware -->
+        <div class="node n11 node-green nd" onclick="showNodeDetail('middleware')">
+          <div class="node-header">🛡️ Fastify Middleware</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot"></span> JWT verify (onRequest hook)</div>
+            <div class="slot"><span class="dot"></span> CORS — allow localhost:3000</div>
+            <div class="slot"><span class="dot"></span> Rate limit — 100 req/min</div>
+            <div class="slot"><span class="dot"></span> Auth routes excluded from hook</div>
+          </div>
+        </div>
+
+        <!-- N12: PostgreSQL -->
+        <div class="node n12 node-amber nd" onclick="showNodeDetail('db')">
+          <div class="node-header">🗄️ PostgreSQL</div>
+          <div class="node-body">
+            <div class="slot"><span class="dot dot-db"></span> users</div>
+            <div class="slot"><span class="dot dot-db"></span> projects</div>
+            <div class="slot"><span class="dot dot-db"></span> project_members</div>
+            <div class="slot"><span class="dot dot-db"></span> tasks</div>
+            <div class="slot"><span class="dot dot-db"></span> activity_logs</div>
+            <div class="slot"><span class="dot dot-db"></span> resources</div>
+            <div class="slot"><span class="dot dot-db"></span> friendships</div>
+            <div class="slot"><span class="dot dot-db"></span> linked_repos</div>
+            <div class="slot"><span class="dot dot-db"></span> notifications</div>
+          </div>
+        </div>
+
+      </div><!-- /node-canvas -->
+    </div><!-- /node-map-viewport -->
+
+    <!-- Legend -->
+    <div class="node-legend">
+      <div class="node-legend-item"><span class="node-legend-dot" style="background:linear-gradient(135deg,#2d1b69,#1a0a3e)"></span> Browser/User</div>
+      <div class="node-legend-item"><span class="node-legend-dot" style="background:linear-gradient(135deg,#0f5c4a,#0a3d32)"></span> Auth</div>
+      <div class="node-legend-item"><span class="node-legend-dot" style="background:linear-gradient(135deg,#1a3a5c,#0e2438)"></span> Frontend</div>
+      <div class="node-legend-item"><span class="node-legend-dot" style="background:linear-gradient(135deg,#1d3d1d,#0f260f)"></span> Backend API</div>
+      <div class="node-legend-item"><span class="node-legend-dot" style="background:linear-gradient(135deg,#4a3820,#2d2010)"></span> Database</div>
+      <div class="node-legend-item"><span class="node-legend-dot" style="background:linear-gradient(135deg,#4a2030,#2d1018)"></span> External</div>
+      <div class="node-legend-item" style="margin-left:8px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--info);box-shadow:0 0 4px rgba(69,146,237,0.4)"></span> Input</div>
+      <div class="node-legend-item"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 4px rgba(9,188,138,0.4)"></span> Output</div>
+      <div class="node-legend-item"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 4px rgba(234,198,106,0.3)"></span> Database</div>
+      <div class="node-legend-item"><span class="node-legend-line" style="border-top:2px dashed var(--accent);opacity:0.3"></span> Async / Return</div>
+      <div class="node-legend-item"><span class="node-legend-line" style="border-top:2px solid var(--accent);opacity:0.4"></span> Direct flow</div>
+      <div class="node-legend-item"><span class="node-legend-line" style="border-top:2px solid var(--accent);opacity:0.5"></span> Auth boundary</div>
+    </div>
+  </div>
+
+  <!-- Detail Panel (hidden, shown on click) -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-overlay" onclick="hideNodeDetail()"></div>
+    <div class="detail-card" id="detailCard">
+      <div class="detail-card-header">
+        <h3 id="detailTitle">Node Title</h3>
+        <button class="detail-card-close" onclick="hideNodeDetail()">✕</button>
+      </div>
+      <div class="detail-card-body" id="detailBody">
+        <div class="detail-section">
+          <h4>What it does</h4>
+          <p id="detailDesc">Description</p>
+        </div>
+        <div class="detail-section">
+          <h4>Flow steps</h4>
+          <ul id="detailSteps"></ul>
+        </div>
+        <div class="detail-section">
+          <h4>Key files</h4>
+          <div class="file-list" id="detailFiles"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ─── Detail data for each node ────────────────────────
+  var nodeData = {
+    browser: {
+      icon: '🌐',
+      title: 'User Browser',
+      desc: 'The entry point for all user interaction. The browser loads the Next.js app on port 3000 and handles OAuth redirects via Google/GitHub.',
+      steps: ['Opens http://localhost:3000 in browser', 'Next.js serves the React app (App Router)', 'User sees LoginPage or Dashboard depending on session', 'Clicks OAuth buttons or interacts with project/task UI', 'All API calls go to Fastify on :4000 via fetch()'],
+      files: ['apps/web/src/app/layout.tsx', 'apps/web/src/store/auth.ts']
+    },
+    login: {
+      icon: '🖥️',
+      title: 'Login Page',
+      desc: 'The login/landing page with Google and GitHub OAuth buttons. Generates PKCE challenge for Google OAuth flow.',
+      steps: ['User navigates to /login', 'Page calls checkSession() to verify if already logged in', 'If session valid → redirect to /dashboard', 'If "Continue with Google" clicked → generate PKCE challenge', 'Store verifier in sessionStorage, redirect to Google OAuth URL', 'If "Continue with GitHub" clicked → redirect to GitHub OAuth'],
+      files: ['apps/web/src/app/login/page.tsx']
+    },
+    oauth: {
+      icon: '🌍',
+      title: 'OAuth Providers (External)',
+      desc: 'Google and GitHub OAuth 2.0 authorization servers. Google uses PKCE flow with S256 code challenge method. GitHub uses standard authorization code flow.',
+      steps: ['Google: receives PKCE challenge + redirect_uri', 'User authenticates on provider', 'Google redirects back with authorization code', 'GitHub: receives redirect with code', 'Both return code to callback pages on :3000'],
+      files: ['External: console.cloud.google.com', 'External: github.com/settings/developers']
+    },
+    callbacks: {
+      icon: '🔄',
+      title: 'OAuth Callback Pages',
+      desc: 'Client-side pages that receive OAuth authorization codes and exchange them for JWT tokens via the Fastify API.',
+      steps: ['Google returns to /api/auth/google/callback?code=xxx', 'Reads pkce_verifier from sessionStorage', 'POSTs {code, code_verifier, redirect_uri} to Fastify', 'GitHub returns to /api/auth/github/callback?code=xxx', 'Calls loginWithGithub(code) from auth store', 'On success: stores Bearer token, redirects to /dashboard'],
+      files: ['apps/web/src/app/api/auth/google/callback/page.tsx', 'apps/web/src/app/api/auth/github/callback/page.tsx', 'apps/api/src/routes/auth.ts']
+    },
+    authstore: {
+      icon: '🔍',
+      title: 'Auth Store + checkSession',
+      desc: 'Zustand store managing authentication state. checkSession is called on every protected page load (except /login and /api/auth/*) to verify the user is still authenticated.',
+      steps: ['AppContent layout mounts → calls checkSession()', 'checkSession: GET /api/v1/auth/session', 'Fastify reads HTTP-only cookie, verifies JWT, fetches user', 'If user found → store user in Zustand → show dashboard', 'If 401 → user stays null → layout redirects to /login', 'On logout: clears token + cookie → full nav to /login'],
+      files: ['apps/web/src/store/auth.ts', 'apps/web/src/app/layout.tsx', 'apps/web/src/lib/api.ts']
+    },
+    pages: {
+      icon: '📄',
+      title: 'App Pages (Dashboard & Features)',
+      desc: 'All authenticated pages that the user interacts with after login. Protected by the AppContent layout auth guard.',
+      steps: ['/dashboard — project grid with search, filter, stats, create project modal', '/projects/:id — detail view with tabs (Tasks/Resources/Activity/Members)', '/friends — search users, send/accept friend requests', '/notifications — list with unread badge, mark all read', '/settings — profile, dark mode toggle, timezone, streak prefs'],
+      files: ['apps/web/src/app/dashboard/page.tsx', 'apps/web/src/app/projects/[id]/page.tsx', 'apps/web/src/app/friends/page.tsx', 'apps/web/src/app/notifications/page.tsx', 'apps/web/src/app/settings/page.tsx']
+    },
+    apiauth: {
+      icon: '🔑',
+      title: 'API — Auth Routes',
+      desc: 'Fastify routes handling authentication. These are PUBLIC (no JWT verification required). They manage OAuth exchange, session checking, and logout.',
+      steps: ['POST /auth/google — exchanges Google code for JWT, sets HTTP-only cookie', 'POST /auth/github — exchanges GitHub code for JWT, sets cookie', 'GET /auth/session — verifies cookie, returns user data or 401', 'POST /auth/logout — clears HTTP-only cookie, returns success'],
+      files: ['apps/api/src/routes/auth.ts']
+    },
+    apicrud: {
+      icon: '📦',
+      title: 'API — CRUD Routes',
+      desc: 'Core business logic routes for projects, tasks, activity streak data, and resources. All protected by JWT middleware.',
+      steps: ['/users/* — GET/PATCH profile, search users by name/email', '/projects/* — create, list, get detail (with members+tasks+resources+activity), update, delete', '/tasks/* — create with auto-position, toggle status (logs activity), delete', '/activity/* — log activity, get contribution graph data (52-week grid)', '/resources/* — add URL with OG metadata fetch, delete'],
+      files: ['apps/api/src/routes/projects.ts', 'apps/api/src/routes/tasks.ts', 'apps/api/src/routes/activity.ts', 'apps/api/src/routes/resources.ts', 'apps/api/src/routes/users.ts']
+    },
+    apicollab: {
+      icon: '👥',
+      title: 'API — Collaboration Routes',
+      desc: 'Handles friend system and project member management with role-based access control.',
+      steps: ['/friends — list accepted friends', '/friends/request — send request + create notification', '/friends/requests — list pending incoming requests', '/friends/accept — accept pending request', '/projects/:id/members — add/update/remove members with roles (viewer/editor/admin)'],
+      files: ['apps/api/src/routes/collaboration.ts']
+    },
+    apigh: {
+      icon: '🐙',
+      title: 'API — GitHub Routes',
+      desc: 'Links GitHub repositories to projects and fetches repo metadata from the GitHub API.',
+      steps: ['POST /projects/:id/link-repo — links owner/repo to project (upsert)', 'GET /projects/:id/repo-status — fetches GitHub API for description, language, stars, pushed_at'],
+      files: ['apps/api/src/routes/github.ts']
+    },
+    apinotif: {
+      icon: '🔔',
+      title: 'API — Notification Routes',
+      desc: 'Simple notification system for in-app alerts about friend requests and project member actions.',
+      steps: ['GET /notifications — returns 50 most recent notifications for the user', 'PATCH /notifications/read-all — marks all user notifications as read'],
+      files: ['apps/api/src/routes/notifications.ts']
+    },
+    middleware: {
+      icon: '🛡️',
+      title: 'Fastify Middleware',
+      desc: 'Global middleware applied to all API routes (except auth and health). Ensures every request is authenticated and within rate limits.',
+      steps: ['onRequest hook fires for every request (except /auth/* and /health)', 'JWT verify: reads HTTP-only cookie, decodes JWT, attaches user to request', 'CORS: allows localhost:3000 origin with credentials:true', 'Rate limit: max 100 requests per minute per IP', 'If any check fails → 401/429 returned immediately'],
+      files: ['apps/api/src/index.ts', 'apps/api/src/middleware/auth.ts']
+    },
+    db: {
+      icon: '🗄️',
+      title: 'PostgreSQL Database',
+      desc: 'Primary data store with 9 tables. All tables use UUID primary keys with proper foreign key relationships and indexes.',
+      steps: ['users — OAuth-linked accounts with timezone + streak_preferences JSONB', 'projects — owned by user, has status/visibility ENUMs', 'project_members — composite PK with role-based access', 'tasks — self-referencing for subtasks, position-based ordering', 'activity_logs — feeds contribution graph + streak system', 'resources — URL bookmarks with auto-fetched OG metadata', 'friendships — bidirectional with pending/accepted/blocked status', 'linked_repos — GitHub repo links (unique per project)', 'notifications — in-app alerts with read/unread state'],
+      files: ['apps/api/src/db/schema.sql', 'apps/api/src/db/models.ts']
+    }
+  };
+
+  function showNodeDetail(key) {
+    var data = nodeData[key];
+    if (!data) return;
+    document.getElementById('detailTitle').innerHTML = data.icon + ' ' + data.title;
+    document.getElementById('detailDesc').textContent = data.desc;
+    var stepsEl = document.getElementById('detailSteps');
+    stepsEl.innerHTML = '';
+    data.steps.forEach(function(s) { var li = document.createElement('li'); li.textContent = s; stepsEl.appendChild(li); });
+    var filesEl = document.getElementById('detailFiles');
+    filesEl.innerHTML = '';
+    data.files.forEach(function(f) { var span = document.createElement('span'); span.textContent = f; filesEl.appendChild(span); });
+    document.getElementById('detailPanel').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    // Highlight node
+    document.querySelectorAll('.node.active-node').forEach(function(n) { n.classList.remove('active-node'); });
+    var activeEl = document.querySelector('.nd[onclick*="' + key + '"]');
+    if (activeEl) activeEl.classList.add('active-node');
+  }
+
+  function hideNodeDetail() {
+    document.getElementById('detailPanel').classList.remove('active');
+    document.body.style.overflow = '';
+    document.querySelectorAll('.node.active-node').forEach(function(n) { n.classList.remove('active-node'); });
+  }
+
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideNodeDetail(); });
+
+  // ─── Zoom ────────────────────────────────────────────
+  var zoomLevel = 1;
+  function zoomNodeMap(factor) {
+    zoomLevel = Math.max(0.4, Math.min(2, factor === 1 ? 1 : zoomLevel * factor));
+    document.getElementById('nodeCanvas').style.transform = 'scale(' + zoomLevel + ')';
+    document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+  }
+  </script>
+</div>
+
+<!-- ───────────── TABLE OF CONTENTS ───────────── -->
+<div class="toc">
+  <h2>📖 Table of Contents</h2>
+  <div class="toc-grid">
+    <a href="#flow-auth">🔐 Authentication</a>
+    <a href="#flow-projects">📁 Project Management</a>
+    <a href="#flow-tasks">✅ Task Management</a>
+    <a href="#flow-graph">📊 Contribution Graph &amp; Streaks</a>
+    <a href="#flow-resources">🔗 Resources &amp; Links</a>
+    <a href="#flow-collab">👥 Collaboration &amp; Friends</a>
+    <a href="#flow-github">🐙 GitHub Integration</a>
+    <a href="#flow-notifications">🔔 Notifications</a>
+    <a href="#flow-settings">⚙️ Settings &amp; Theme</a>
+    <a href="#flow-map">🕸️ Full Project Flow Map</a>
+    <a href="#data-model">🗃️ Data Model</a>
+    <a href="#api">🌐 API Endpoints</a>
+    <a href="#components">🧩 Components</a>
+    <a href="#stores">📦 Stores</a>
+    <a href="#design">🎨 Design System</a>
+    <a href="#known-issues">⚠️ Known Issues &amp; Fixes</a>
+    <a href="#file-index">📂 File Index</a>
+  </div>
+</div>
+
+<!-- ───────────── AUTH ───────────── -->
+<div id="flow-auth" class="section">
+  <div class="section-header"><h2>🔐 Authentication</h2><span class="badge">OAuth · JWT · HTTP-only cookies</span></div>
+  <p class="overview" style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+    OAuth-only auth via Google (primary) and GitHub (secondary). JWT stored in HTTP-only cookie <code>token</code>
+    with 7-day expiry. Bearer token fallback for API calls. Rate-limited at 100 req/min.
+  </p>
+
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>🔑 Google Login</h3>
+      <div class="trigger"><strong>Trigger:</strong> User clicks "Continue with Google" on /login</div>
+      <ol class="steps">
+        <li>LoginPage generates PKCE challenge (SHA-256 code_verifier)</li>
+        <li>Stores PKCE verifier in <code>sessionStorage('pkce_verifier')</code></li>
+        <li>Redirects to Google OAuth URL <span class="dim">(code_challenge_method=S256)</span></li>
+        <li>Google redirects back to <code>/api/auth/google/callback?code=xxx</code></li>
+        <li>GoogleCallback reads code + pkce_verifier from sessionStorage</li>
+        <li>POSTs <code>{ code, code_verifier, redirect_uri }</code> → <code>/api/v1/auth/google</code></li>
+        <li>Fastify exchanges code for access_token with Google's token endpoint</li>
+        <li>Fetches user info from Google People API → creates/links user in DB</li>
+        <li>Signs JWT, sets HTTP-only cookie (<span class="dim">httpOnly, sameSite=lax, path=/, 7d</span>)</li>
+        <li>Returns <code>{ token, user }</code> → callback stores Bearer token → redirects to /dashboard</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">login/page.tsx</span>
+        <span class="key-file">api/auth/google/callback/page.tsx</span>
+        <span class="key-file">routes/auth.ts (POST /auth/google)</span>
+        <span class="key-file">store/auth.ts</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>🐙 GitHub Login</h3>
+      <div class="trigger"><strong>Trigger:</strong> User clicks "Continue with GitHub" on /login</div>
+      <ol class="steps">
+        <li>Redirects to GitHub OAuth URL</li>
+        <li>GitHub redirects to <code>/api/auth/github/callback?code=xxx</code></li>
+        <li>GithubCallback calls <code>loginWithGithub(code)</code> from auth store</li>
+        <li>POSTs <code>{ code }</code> → <code>/api/v1/auth/github</code></li>
+        <li>Fastify exchanges code with GitHub API → creates/links user</li>
+        <li>Sets HTTP-only cookie + returns <code>{ token, user }</code></li>
+        <li>Redirects to /dashboard</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">api/auth/github/callback/page.tsx</span>
+        <span class="key-file">routes/auth.ts (POST /auth/github)</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>🔍 Session Check</h3>
+      <div class="trigger"><strong>Trigger:</strong> Every protected page load (AppContent useEffect)</div>
+      <ol class="steps">
+        <li>AppContent calls <code>checkSession()</code> (skipped on /login and /api/auth/*)</li>
+        <li><code>checkSession</code> → GET <code>/api/v1/auth/session</code></li>
+        <li>Fastify reads HTTP-only cookie, verifies JWT, fetches user from DB</li>
+        <li>If valid: returns <code>{ user, expires }</code> → user set in Zustand store ✅</li>
+        <li>If 401: user stays null → routing effect redirects to /login</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">layout.tsx (AppContent)</span>
+        <span class="key-file">store/auth.ts (checkSession)</span>
+        <span class="key-file">routes/auth.ts (GET /auth/session)</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>🚪 Logout</h3>
+      <div class="trigger"><strong>Trigger:</strong> User clicks logout button in Navbar</div>
+      <ol class="steps">
+        <li>Navbar calls <code>logout()</code> from auth store</li>
+        <li>Sets <code>ph_logged_out</code> flag in sessionStorage</li>
+        <li>Clears Bearer token via <code>api.setToken(null)</code></li>
+        <li>Sets <code>user = null</code> in Zustand store</li>
+        <li>POST <code>/api/v1/auth/logout</code> → Fastify clears HTTP-only cookie (<span class="dim">Max-Age=0</span>)</li>
+        <li><code>window.location.href = '/login'</code> (full page navigation)</li>
+        <li>Login page: clears flag → calls checkSession → 401 → stays on login</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">Navbar.tsx</span>
+        <span class="key-file">store/auth.ts (logout)</span>
+        <span class="key-file">routes/auth.ts (POST /auth/logout)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── PROJECTS ───────────── -->
+<div id="flow-projects" class="section">
+  <div class="section-header"><h2>📁 Project Management</h2><span class="badge">CRUD · Members · Status</span></div>
+
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>➕ Create Project</h3>
+      <div class="trigger"><strong>Trigger:</strong> User clicks "New Project" in Navbar or dashboard</div>
+      <ol class="steps">
+        <li>Navbar sets <code>createProjectOpen = true</code> in UI store</li>
+        <li>Dashboard renders Modal with form <span class="dim">(name, description, icon, status, visibility)</span></li>
+        <li>User fills form → clicks "Create Project"</li>
+        <li>POST <code>/api/v1/projects</code> → Fastify creates project + logs <code>project_created</code> activity</li>
+        <li>Returns 201 → dashboard refetches project list, closes modal</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">dashboard/page.tsx</span>
+        <span class="key-file">routes/projects.ts (POST /projects)</span>
+        <span class="key-file">db/models.ts (createProject)</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>📄 View Project Detail</h3>
+      <div class="trigger"><strong>Trigger:</strong> User clicks a project card → /projects/:id</div>
+      <ol class="steps">
+        <li>ProjectDetailPage mounts → GET <code>/api/v1/projects/:id</code></li>
+        <li>Fastify fetches project + members + tasks + resources + activity + linked_repo</li>
+        <li>Returns all data in a single response</li>
+        <li>Page renders: hero header, contribution graph, tabbed content</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">projects/[id]/page.tsx</span>
+        <span class="key-file">routes/projects.ts (GET /projects/:id)</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>✏️ Update / 🗑️ Delete Project</h3>
+      <div class="trigger"><strong>Trigger:</strong> Edit button or trash icon on project card</div>
+      <ol class="steps">
+        <li>Edit: opens modal → PATCH <code>/api/v1/projects/:id</code> → updates DB (owner/admin/editor)</li>
+        <li>Delete: confirm → DELETE <code>/api/v1/projects/:id</code> → owner only → cascading delete</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">projects/[id]/page.tsx</span>
+        <span class="key-file">ProjectCard.tsx</span>
+        <span class="key-file">routes/projects.ts (PATCH|DELETE /projects/:id)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── TASKS ───────────── -->
+<div id="flow-tasks" class="section">
+  <div class="section-header"><h2>✅ Task Management</h2><span class="badge">List &amp; Kanban · Subtasks · Priority</span></div>
+  <p class="overview" style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+    Tasks belong to projects, ordered by <code>position</code> (auto-incrementing). Support subtasks (self-referencing <code>parent_task_id</code>),
+    priority P0-P3, due dates, assignment, and status lifecycle. Two views: List (tree with expand/collapse) and Kanban (drag-between-columns).
+  </p>
+
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>➕ Create Task</h3>
+      <ol class="steps">
+        <li>Click "Add Task" in Tasks tab → modal with title, description, priority, due_date</li>
+        <li>POST <code>/api/v1/projects/:id/tasks</code></li>
+        <li>Fastify creates task with auto-position <code>(MAX(position) + 100)</code></li>
+        <li>Returns 201 → task list refreshes</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">TaskList.tsx</span>
+        <span class="key-file">routes/tasks.ts (POST /projects/:id/tasks)</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>🔄 Toggle Status</h3>
+      <ol class="steps">
+        <li>Click circular checkbox → <code>status: 'completed' | 'pending'</code></li>
+        <li>PATCH <code>/api/v1/tasks/:taskId</code></li>
+        <li>Fastify updates + logs <code>task_completed</code> activity <span class="dim">(double-check for StrictMode)</span></li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">TaskList.tsx (handleToggleStatus)</span>
+        <span class="key-file">routes/tasks.ts (PATCH /tasks/:taskId)</span>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3>📋 Kanban Move</h3>
+      <ol class="steps">
+        <li>Kanban card shows quick-action buttons → click a target status</li>
+        <li>PATCH <code>/api/v1/tasks/:taskId</code> with <code>{ status: newStatus }</code></li>
+        <li>Card moves to the new column on refresh</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">KanbanBoard.tsx</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── CONTRIBUTION GRAPH ───────────── -->
+<div id="flow-graph" class="section">
+  <div class="section-header"><h2>📊 Contribution Graph &amp; Streaks</h2><span class="badge">GitHub-style · 52 weeks · 5 levels</span></div>
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>📈 Load Graph</h3>
+      <ol class="steps">
+        <li>ProjectDetail renders ContributionGraph component</li>
+        <li>GET <code>/api/v1/projects/:id/contribution-graph</code></li>
+        <li>Fastify queries activity_logs grouped by date for last 365 days</li>
+        <li>Returns 52×7 grid with level (0-4) based on activity count</li>
+        <li>Component renders cells with CSS classes <code>contribution-level-{0-4}</code></li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">ContributionGraph.tsx</span>
+        <span class="key-file">routes/activity.ts (GET /contribution-graph)</span>
+        <span class="key-file">db/models.ts (getContributionData)</span>
+      </div>
+    </div>
+    <div class="flow-card">
+      <h3>🔥 Log Activity &amp; Streaks</h3>
+      <ol class="steps">
+        <li>Click "+ Log Activity" → POST activity → graph refreshes</li>
+        <li>Navbar calls GET <code>/api/v1/streaks</code> → shows sum in flame icon</li>
+        <li>Streaks: <code>COUNT(DISTINCT DATE(logged_at))</code> per project per user</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">Navbar.tsx (streakCount)</span>
+        <span class="key-file">routes/activity.ts (POST /activity, GET /streaks)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── RESOURCES ───────────── -->
+<div id="flow-resources" class="section">
+  <div class="section-header"><h2>🔗 Resources &amp; Links</h2><span class="badge">Bookmarks · OG metadata</span></div>
+  <div class="flow-card">
+    <h3>➕ Add Resource</h3>
+    <ol class="steps">
+      <li>Click "Add Link" in Resources tab → modal (URL, category, notes)</li>
+      <li>POST <code>/api/v1/projects/:id/resources</code></li>
+      <li>Fastify fetches the URL → parses HTML for OG metadata <span class="dim">(title, description, favicon, og:image)</span></li>
+      <li>Creates resource in DB, logs <code>resource_added</code> activity</li>
+      <li>Returns 201 → resources list refreshes</li>
+    </ol>
+    <div class="key-files">
+      <span class="key-file">projects/[id]/page.tsx (handleAddResource)</span>
+      <span class="key-file">routes/resources.ts (POST /projects/:id/resources)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── COLLABORATION ───────────── -->
+<div id="flow-collab" class="section">
+  <div class="section-header"><h2>👥 Collaboration &amp; Friends</h2><span class="badge">Search · Friend requests · Project roles</span></div>
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>🔎 Search Users</h3>
+      <p class="trigger">Type 2+ characters in friends search bar → GET /api/v1/users/search?q=... → returns matching users</p>
+      <div class="key-files"><span class="key-file">friends/page.tsx</span><span class="key-file">routes/users.ts (GET /users/search)</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>🤝 Send / Accept Friend Request</h3>
+      <p class="trigger">Click "Add" → POST /friends/request → insert pending friendship + notification</p>
+      <p class="trigger">Click "Accept" → POST /friends/accept → status = 'accepted'</p>
+      <div class="key-files"><span class="key-file">routes/collaboration.ts</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>👤 Add Member to Project</h3>
+      <ol class="steps">
+        <li>Owner clicks "Add Member" → searches user → selects</li>
+        <li>POST <code>/api/v1/projects/:id/members</code> with <code>{ user_id, role }</code></li>
+        <li>Fastify: inserts project_members + creates notification + logs activity</li>
+      </ol>
+      <div class="key-files"><span class="key-file">routes/collaboration.ts (POST /projects/:id/members)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── GITHUB ───────────── -->
+<div id="flow-github" class="section">
+  <div class="section-header"><h2>🐙 GitHub Integration</h2><span class="badge">Link repos · Fetch metadata</span></div>
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>🔗 Link Repository</h3>
+      <p class="trigger">Enter <code>owner/repo</code> in link modal → POST /projects/:id/link-repo</p>
+      <p>Fastify upserts into <code>linked_repos</code> table (unique by project_id)</p>
+    </div>
+    <div class="flow-card">
+      <h3>📡 Repo Status</h3>
+      <p class="trigger">Auto-loaded on project detail page</p>
+      <p>GET /projects/:id/repo-status → fetches GitHub API for repo info <span class="dim">(description, language, stars, pushed_at)</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── NOTIFICATIONS ───────────── -->
+<div id="flow-notifications" class="section">
+  <div class="section-header"><h2>🔔 Notifications</h2><span class="badge">In-app · Friend requests · Member invites</span></div>
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>📋 List &amp; Mark Read</h3>
+      <p class="trigger">User visits /notifications or sidebar bell</p>
+      <p>GET /api/v1/notifications → returns 50 most recent. Unread count badge in header.</p>
+      <p>Click "Mark all read" → PATCH /api/v1/notifications/read-all</p>
+      <div class="key-files"><span class="key-file">notifications/page.tsx</span><span class="key-file">routes/notifications.ts</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── SETTINGS ───────────── -->
+<div id="flow-settings" class="section">
+  <div class="section-header"><h2>⚙️ Settings &amp; Theme</h2><span class="badge">Dark/Light · Timezone · Streaks</span></div>
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>🌓 Theme Toggle</h3>
+      <ol class="steps">
+        <li>Click sun/moon in Navbar or toggle in Settings</li>
+        <li><code>useThemeStore.toggle()</code> → flips <code>isDark</code> state</li>
+        <li>Saves to <code>localStorage('theme')</code> → toggles <code>dark</code> class on &lt;html&gt;</li>
+        <li>CSS vars swap via <code>:root (dark)</code> vs <code>:root:not(.dark) (light)</code></li>
+        <li>Inline script in &lt;head&gt; reads localStorage <strong>before</strong> React hydration → no flash</li>
+      </ol>
+      <div class="key-files">
+        <span class="key-file">store/theme.ts</span>
+        <span class="key-file">layout.tsx (inline script)</span>
+        <span class="key-file">tailwind.config.js (var() refs)</span>
+        <span class="key-file">globals.css (:root:not(.dark))</span>
+      </div>
+    </div>
+    <div class="flow-card">
+      <h3>🌍 Timezone</h3>
+      <p class="trigger">Change timezone in Settings → Save</p>
+      <p>PATCH /api/v1/users/me with <code>{ timezone }</code> → updates DB → returns updated user</p>
+      <div class="key-files"><span class="key-file">settings/page.tsx</span><span class="key-file">routes/users.ts (PATCH /users/me)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── DATA MODEL ───────────── -->
+<div id="data-model" class="section">
+  <div class="section-header"><h2>🗃️ Data Model</h2><span class="badge">PostgreSQL · UUID PKs · Normalized</span></div>
+  <p class="overview" style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+    9 tables with UUID primary keys, foreign keys, and ENUM types. All tables have indexes on frequently queried columns.
+  </p>
+  <table class="dtable">
+    <thead><tr><th>Table</th><th>Columns</th><th>Indexes / Constraints</th></tr></thead>
+    <tbody>
+      <tr><td>users</td><td class="col">id (UUID PK), email (UNIQUE), name, avatar_url, google_id, github_id, timezone, streak_preferences (JSONB), created_at, updated_at</td><td class="col">google_id, github_id, email</td></tr>
+      <tr><td>projects</td><td class="col">id (UUID PK), owner_id (FK), name, description, icon, status (ENUM), visibility (ENUM), created_at, updated_at</td><td class="col">owner_id, status</td></tr>
+      <tr><td>project_members</td><td class="col">project_id (FK), user_id (FK), role (ENUM), joined_at</td><td class="col">PK: (project_id, user_id)</td></tr>
+      <tr><td>tasks</td><td class="col">id (UUID PK), project_id (FK), parent_task_id (self-ref), title, description, due_date, priority (ENUM), position, estimated_hours, status (ENUM), assignee_id (FK), created_by (FK), created_at, updated_at</td><td class="col">project_id, assignee_id, parent_task_id</td></tr>
+      <tr><td>activity_logs</td><td class="col">id (UUID PK), user_id (FK), project_id (FK), activity_type (ENUM), metadata (JSONB), logged_at</td><td class="col">project_id, user_id, logged_at, (project_id, logged_at)</td></tr>
+      <tr><td>resources</td><td class="col">id (UUID PK), project_id (FK), url, title, description, favicon_url, og_image_url, category (ENUM), notes, added_by (FK), created_at</td><td class="col">project_id</td></tr>
+      <tr><td>friendships</td><td class="col">user_id_1 (FK), user_id_2 (FK), status (ENUM), action_user_id, created_at</td><td class="col">PK: (user_id_1, user_id_2), CHECK: id1 &lt;&gt; id2</td></tr>
+      <tr><td>linked_repos</td><td class="col">id (UUID PK), project_id (UNIQUE FK), user_id (FK), github_repo_full_name, last_fetched_at, repo_data (JSONB)</td><td class="col">UNIQUE(project_id)</td></tr>
+      <tr><td>notifications</td><td class="col">id (UUID PK), user_id (FK), type, title, body, metadata (JSONB), read (boolean), created_at</td><td class="col">(user_id, read, created_at DESC)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────── API ───────────── -->
+<div id="api" class="section">
+  <div class="section-header"><h2>🌐 API Endpoints</h2><span class="badge">All: /api/v1/*</span></div>
+  <div class="api-grid">
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/auth/google</span></div>
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/auth/github</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/auth/session</span></div>
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/auth/logout</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-method method-PATCH">PATCH</span><span class="api-path">/users/me</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/users/search?q=</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-method method-POST">POST</span><span class="api-path">/projects</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-method method-PATCH">PATCH</span><span class="api-method method-DELETE">DEL</span><span class="api-path">/projects/:id</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-method method-POST">POST</span><span class="api-path">/projects/:id/tasks</span></div>
+    <div class="api-item"><span class="api-method method-PATCH">PATCH</span><span class="api-method method-DELETE">DEL</span><span class="api-path">/tasks/:taskId</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-method method-POST">POST</span><span class="api-path">/projects/:id/activity</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/projects/:id/contribution-graph</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/streaks</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-method method-POST">POST</span><span class="api-path">/projects/:id/resources</span></div>
+    <div class="api-item"><span class="api-method method-DELETE">DEL</span><span class="api-path">/resources/:resourceId</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/friends</span></div>
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/friends/request</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/friends/requests</span></div>
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/friends/accept</span></div>
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/projects/:id/members</span></div>
+    <div class="api-item"><span class="api-method method-PATCH">PATCH</span><span class="api-method method-DELETE">DEL</span><span class="api-path">/projects/:id/members/:userId</span></div>
+    <div class="api-item"><span class="api-method method-POST">POST</span><span class="api-path">/projects/:id/link-repo</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/projects/:id/repo-status</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/notifications</span></div>
+    <div class="api-item"><span class="api-method method-PATCH">PATCH</span><span class="api-path">/notifications/read-all</span></div>
+    <div class="api-item"><span class="api-method method-GET">GET</span><span class="api-path">/health</span></div>
+  </div>
+</div>
+
+<!-- ───────────── COMPONENTS ───────────── -->
+<div id="components" class="section">
+  <div class="section-header"><h2>🧩 Components</h2><span class="badge">UI · Layout · Project · Tasks</span></div>
+
+  <h3 style="font-size:15px;font-weight:500;color:var(--accent);margin-bottom:12px;">UI Library</h3>
+  <div class="comp-grid">
+    <div class="comp-card"><h4>Button</h4><div class="path">ui/Button.tsx</div><p>Variants: primary (accent bg), secondary (bordered), ghost, danger. Sizes: sm, md, lg. Loading state with spinner.</p></div>
+    <div class="comp-card"><h4>Card</h4><div class="path">ui/Card.tsx</div><p>Variants: glass (blur+backdrop), bordered, default. Hover effect with accent glow.</p></div>
+    <div class="comp-card"><h4>Badge / StatusBadge</h4><div class="path">ui/Badge.tsx</div><p>Badge variants: default, success, warning, danger, info. StatusBadge maps project status, task priority, member roles.</p></div>
+    <div class="comp-card"><h4>Input / Textarea / Select</h4><div class="path">ui/Input.tsx</div><p>Label support, error state, focus ring. Consistent dark theme styling.</p></div>
+    <div class="comp-card"><h4>Modal</h4><div class="path">ui/Modal.tsx</div><p>Animated with Framer Motion (AnimatePresence). Escape key + overlay click to close. Title bar with X button.</p></div>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:500;color:var(--accent);margin:20px 0 12px;">Layout</h3>
+  <div class="comp-grid">
+    <div class="comp-card"><h4>AppContent</h4><div class="path">layout.tsx</div><p>Root wrapper: auth guard (redirects to /login if no user), loading spinner, dark mode init, session check, toast notifications.</p><div class="features"><span>Auth guard</span><span>Loading state</span><span>Session check</span></div></div>
+    <div class="comp-card"><h4>Sidebar</h4><div class="path">layout/Sidebar.tsx</div><p>Collapsible nav (Dashboard, Projects, Friends, Notifications, Settings). Logo with flame icon, active route highlighting, user profile section.</p><div class="features"><span>Collapsible</span><span>Active state</span><span>User avatar</span></div></div>
+    <div class="comp-card"><h4>Navbar</h4><div class="path">layout/Navbar.tsx</div><p>Header bar: New Project button, streak flame with count, dark mode toggle (sun/moon), logout button.</p><div class="features"><span>Streak indicator</span><span>Theme toggle</span><span>Logout</span></div></div>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:500;color:var(--accent);margin:20px 0 12px;">Project</h3>
+  <div class="comp-grid">
+    <div class="comp-card"><h4>ProjectCard</h4><div class="path">projects/ProjectCard.tsx</div><p>Clickable card with icon, name, status badge, description, progress bar, time ago, member count, GitHub indicator, delete button (hover).</p></div>
+    <div class="comp-card"><h4>ContributionGraph</h4><div class="path">projects/ContributionGraph.tsx</div><p>52×7 grid: 5 color levels, month labels, day labels (Mon/Wed/Fri), "Log Activity" button, legend (Less → More).</p></div>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:500;color:var(--accent);margin:20px 0 12px;">Tasks</h3>
+  <div class="comp-grid">
+    <div class="comp-card"><h4>TaskList</h4><div class="path">tasks/TaskList.tsx</div><p>Tree view with expand/collapse: create, toggle complete (circle checkbox), edit (inline modal), delete. Subtasks with indentation + left border. Overdue detection. Priority sort.</p></div>
+    <div class="comp-card"><h4>KanbanBoard</h4><div class="path">tasks/KanbanBoard.tsx</div><p>4 columns (Yet to Start, In Progress, Completed, Cancelled). Inline rename (double-click), quick status change buttons, delete. Badge for priority.</p></div>
+  </div>
+</div>
+
+<!-- ───────────── STORES ───────────── -->
+<div id="stores" class="section">
+  <div class="section-header"><h2>📦 Stores</h2><span class="badge">Zustand · 3 stores</span></div>
+  <div class="store-grid">
+    <div class="store-card">
+      <h4>🔐 auth</h4>
+      <div class="path">store/auth.ts</div>
+      <div class="state-item"><strong>state:</strong> <span>user (User | null)</span>, <span>isLoading (boolean)</span></div>
+      <div class="state-item"><strong>actions:</strong> <span>setUser</span>, <span>loginWithGoogle</span>, <span>loginWithGithub</span>, <span>logout</span>, <span>checkSession</span></div>
+    </div>
+    <div class="store-card">
+      <h4>🌓 theme</h4>
+      <div class="path">store/theme.ts</div>
+      <div class="state-item"><strong>state:</strong> <span>isDark (boolean)</span></div>
+      <div class="state-item"><strong>actions:</strong> <span>toggle</span>, <span>setDark</span></div>
+      <div class="state-item"><strong>persistence:</strong> <span>localStorage('theme')</span></div>
+    </div>
+    <div class="store-card">
+      <h4>🎛️ ui</h4>
+      <div class="path">store/ui.ts</div>
+      <div class="state-item"><strong>state:</strong> <span>sidebarOpen (boolean)</span>, <span>createProjectOpen (boolean)</span></div>
+      <div class="state-item"><strong>actions:</strong> <span>toggleSidebar</span>, <span>setCreateProjectOpen</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── DESIGN SYSTEM ───────────── -->
+<div id="design" class="section">
+  <div class="section-header"><h2>🎨 Design System</h2><span class="badge">Landa · Dark theme · Teal accent</span></div>
+
+  <div class="flow-card">
+    <h3>🎨 Color Palette</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><span class="swatch-dot" style="background:#09bc8a"></span> <span>accent <code>#09bc8a</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#69ecbf"></span> <span>accent-light <code>#69ecbf</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#010907"></span> <span>bg-dark <code>#010907</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#0a1a15"></span> <span>bg-card <code>#0a1a15</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#f4f7f5"></span> <span>text-primary <code>#f4f7f5</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#8da39a"></span> <span>text-secondary <code>#8da39a</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#6a867a"></span> <span>text-muted <code>#6a867a</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#1f332b"></span> <span>border <code>#1f332b</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#eac66a"></span> <span>success <code>#eac66a</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#eb7644"></span> <span>warning <code>#eb7644</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#4592ed"></span> <span>info <code>#4592ed</code></span></div>
+      <div class="swatch"><span class="swatch-dot" style="background:#ef4444"></span> <span>danger <code>#ef4444</code></span></div>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <h3>🔤 Typography</h3>
+    <p><strong>Primary:</strong> Inter, system-ui, sans-serif · <strong>Mono:</strong> Geist Mono · <strong>Display:</strong> Clash Display</p>
+    <p style="margin-top:8px;color:var(--text-secondary);font-size:13px;">
+      h1: 72px/80px · h2: 56px/64px · h3: 32px/40px · h4: 24px/28px · h5: 20px/28px · h6: 18px/28px · body: 16px/24px · sm: 14px/20px · xs: 12px/16px
+    </p>
+  </div>
+
+  <div class="flow-card">
+    <h3>📐 Spacing &amp; Radius</h3>
+    <p><strong>Spacing:</strong> 1px base · scale: 1, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 18px</p>
+    <p><strong>Radius:</strong> sm: 5px · md: 8px · lg: 15px · xl: 24px · 2xl: 40px · pill: 999px</p>
+    <p><strong>Shadows:</strong> xs (basic), sm (multi-layer), md (inset glow)</p>
+    <p><strong>Transitions:</strong> <code>0.45s cubic-bezier(0.44, 0, 0.56, 1)</code></p>
+    <p><strong>Breakpoints:</strong> md: 810px · lg: 1199px · xl: 1440px</p>
+  </div>
+</div>
+
+<!-- ───────────── KNOWN ISSUES ───────────── -->
+<div id="known-issues" class="section">
+  <div class="section-header"><h2>⚠️ Known Issues &amp; Fixes</h2><span class="badge">Recent patches</span></div>
+  <div class="flow-grid">
+    <div class="flow-card">
+      <h3>🔄 API Proxy via Rewrites</h3>
+      <p class="trigger"><strong>Change:</strong> <code>lib/api.ts</code> now uses <code>API_BASE = ''</code> — all requests go same-origin</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Previously the browser made CORS requests directly to <code>localhost:4000</code> using <code>NEXT_PUBLIC_API_URL</code>.
+        Now <code>next.config.js</code> has a <code>rewrites()</code> rule proxying <code>/api/v1/:path*</code> to the Fastify backend.
+        This eliminates all CORS complexity — no preflight requests, no credential headers needed.
+      </p>
+      <div class="key-files">
+        <span class="key-file">next.config.js (rewrites)</span>
+        <span class="key-file">lib/api.ts (API_BASE = '')</span>
+      </div>
+    </div>
+    <div class="flow-card">
+      <h3>📐 Server Components for Redirects</h3>
+      <p class="trigger"><strong>Change:</strong> <code>page.tsx</code> and <code>projects/page.tsx</code> → server components</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Changed from <code>'use client'</code> with <code>useRouter</code> to server components using Next.js <code>redirect()</code>.
+        Eliminates client-side hydration flash and unnecessary JS bundle for redirect-only pages.
+      </p>
+      <div class="key-files"><span class="key-file">app/page.tsx</span><span class="key-file">app/projects/page.tsx</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>🎨 Tailwind Dynamic Classes Fixed</h3>
+      <p class="trigger"><strong>Change:</strong> Dashboard stat colors use <code>colorClass</code> instead of <code>color</code></p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Tailwind CSS cannot tree-shake dynamically constructed classes like <code>text-${stat.color}</code>.
+        Changed to <code>colorClass: 'text-accent'</code> (full literal class names), so Tailwind's JIT compiler can detect and include them.
+      </p>
+      <div class="key-files"><span class="key-file">dashboard/page.tsx</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>📊 Contribution Graph Month Labels</h3>
+      <p class="trigger"><strong>Change:</strong> <code>ContributionGraph.tsx</code> fixed month label rendering</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Old code used <code>.filter((_, i) => i % 4 === 0)</code> with broken destructuring.
+        Now properly maps to <code>{ week, weekIndex }</code> and calculates labels via <code>Math.floor(weekIndex / 4.3) % 12</code> for accurate 52-week alignment.
+      </p>
+      <div class="key-files"><span class="key-file">ContributionGraph.tsx</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>⚙️ Streak Preferences Controlled</h3>
+      <p class="trigger"><strong>Change:</strong> Settings page streak checkboxes are now controlled components</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Streak preferences in Settings now use <code>useState</code> with <code>checked</code> prop and <code>onChange</code> handlers
+        that immediately persist via <code>api.updateProfile({ streak_preferences })</code>.
+        Previously used <code>defaultChecked</code> which lost state on re-render.
+      </p>
+      <div class="key-files"><span class="key-file">settings/page.tsx</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>🕒 ProjectCard Null Date Guard</h3>
+      <p class="trigger"><strong>Change:</strong> <code>getTimeAgo()</code> handles null dates</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Added <code>if (!dateStr) return '';</code> guard to prevent <code>new Date(null).getTime()</code> returning NaN,
+        which caused <code>Invalid Date</code> rendering in project cards with missing timestamps.
+      </p>
+      <div class="key-files"><span class="key-file">ProjectCard.tsx</span></div>
+    </div>
+    <div class="flow-card">
+      <h3>🔑 Friends List Unique Key</h3>
+      <p class="trigger"><strong>Change:</strong> Pending requests card key uses composite key</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+        Changed key from <code>r.user_id_1</code> (which can collide) to <code>`${r.user_id_1}-${r.user_id_2}`</code>
+        to ensure unique React keys when multiple pending requests exist.
+      </p>
+      <div class="key-files"><span class="key-file">friends/page.tsx</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── FILE INDEX ───────────── -->
+<div id="file-index" class="section">
+  <div class="section-header"><h2>📂 File Index</h2><span class="badge">~60 source files</span></div>
+
+  <div class="flow-card">
+    <h3>📁 Root</h3>
+    <div class="key-files">
+      <span class="key-file">package.json</span>
+      <span class="key-file">turbo.json</span>
+      <span class="key-file">docker-compose.yml</span>
+      <span class="key-file">vercel.json</span>
+      <span class="key-file">README.md</span>
+      <span class="key-file">SRS.md</span>
+      <span class="key-file">landa-design-system.md</span>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <h3>📁 apps/web (Next.js Frontend)</h3>
+    <p style="margin-bottom:8px;color:var(--text-secondary);font-size:13px;"><strong>Pages (src/app):</strong></p>
+    <div class="key-files">
+      <span class="key-file">layout.tsx</span>
+      <span class="key-file">page.tsx</span>
+      <span class="key-file">globals.css</span>
+      <span class="key-file">login/page.tsx</span>
+      <span class="key-file">dashboard/page.tsx</span>
+      <span class="key-file">projects/page.tsx</span>
+      <span class="key-file">projects/[id]/page.tsx</span>
+      <span class="key-file">friends/page.tsx</span>
+      <span class="key-file">notifications/page.tsx</span>
+      <span class="key-file">settings/page.tsx</span>
+    </div>
+    <p style="margin:10px 0 8px;color:var(--text-secondary);font-size:13px;"><strong>API Routes (src/app/api):</strong></p>
+    <div class="key-files">
+      <span class="key-file">auth/google/callback/page.tsx</span>
+      <span class="key-file">auth/github/callback/page.tsx</span>
+      <span class="key-file">v1/[...slug]/route.ts</span>
+    </div>
+    <p style="margin:10px 0 8px;color:var(--text-secondary);font-size:13px;"><strong>Components (src/components):</strong></p>
+    <div class="key-files">
+      <span class="key-file">ui/Button.tsx</span>
+      <span class="key-file">ui/Card.tsx</span>
+      <span class="key-file">ui/Badge.tsx</span>
+      <span class="key-file">ui/Input.tsx</span>
+      <span class="key-file">ui/Modal.tsx</span>
+      <span class="key-file">layout/Sidebar.tsx</span>
+      <span class="key-file">layout/Navbar.tsx</span>
+      <span class="key-file">projects/ProjectCard.tsx</span>
+      <span class="key-file">projects/ContributionGraph.tsx</span>
+      <span class="key-file">tasks/TaskList.tsx</span>
+      <span class="key-file">tasks/KanbanBoard.tsx</span>
+    </div>
+    <p style="margin:10px 0 8px;color:var(--text-secondary);font-size:13px;"><strong>Lib &amp; Stores:</strong></p>
+    <div class="key-files">
+      <span class="key-file">lib/api.ts</span>
+      <span class="key-file">lib/auth.ts</span>
+      <span class="key-file">lib/db.ts</span>
+      <span class="key-file">store/auth.ts</span>
+      <span class="key-file">store/theme.ts</span>
+      <span class="key-file">store/ui.ts</span>
+    </div>
+    <p style="margin:10px 0 8px;color:var(--text-secondary);font-size:13px;"><strong>Config:</strong></p>
+    <div class="key-files">
+      <span class="key-file">tailwind.config.js</span>
+      <span class="key-file">next.config.js (rewrites → Fastify)</span>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <h3>📁 apps/api (Fastify Backend)</h3>
+    <p style="margin-bottom:8px;color:var(--text-secondary);font-size:13px;"><strong>Entry &amp; Middleware:</strong></p>
+    <div class="key-files">
+      <span class="key-file">src/index.ts</span>
+      <span class="key-file">src/middleware/auth.ts</span>
+    </div>
+    <p style="margin:10px 0 8px;color:var(--text-secondary);font-size:13px;"><strong>Routes:</strong></p>
+    <div class="key-files">
+      <span class="key-file">routes/auth.ts</span>
+      <span class="key-file">routes/users.ts</span>
+      <span class="key-file">routes/projects.ts</span>
+      <span class="key-file">routes/tasks.ts</span>
+      <span class="key-file">routes/activity.ts</span>
+      <span class="key-file">routes/resources.ts</span>
+      <span class="key-file">routes/collaboration.ts</span>
+      <span class="key-file">routes/github.ts</span>
+      <span class="key-file">routes/notifications.ts</span>
+    </div>
+    <p style="margin:10px 0 8px;color:var(--text-secondary);font-size:13px;"><strong>Database:</strong></p>
+    <div class="key-files">
+      <span class="key-file">db/pool.ts</span>
+      <span class="key-file">db/models.ts</span>
+      <span class="key-file">db/schema.sql</span>
+      <span class="key-file">seed.ts</span>
+    </div>
+  </div>
+
+  <div class="flow-card">
+    <h3>📁 packages/shared &amp; packages/tsconfig</h3>
+    <div class="key-files">
+      <span class="key-file">shared/src/enums.ts</span>
+      <span class="key-file">shared/src/schemas.ts</span>
+      <span class="key-file">shared/src/index.ts</span>
+      <span class="key-file">tsconfig/base.json</span>
+      <span class="key-file">tsconfig/nextjs.json</span>
+      <span class="key-file">tsconfig/node.json</span>
+    </div>
+  </div>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--border);margin:40px 0 20px;">
+<p style="text-align:center;color:var(--text-muted);font-size:12px;">
+  ProjectHub v1.0 — Generated from full source scan · docs/project-flows.html &amp; docs/project-flows.json
+</p>
+
+</div>
+</body>
+</html>

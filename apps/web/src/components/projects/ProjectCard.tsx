@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 function getTimeAgo(dateStr: string): string {
+  if (!dateStr) return '';
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = now - then;

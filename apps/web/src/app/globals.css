@@ -31,6 +31,20 @@
   --transition-default: color 0.45s cubic-bezier(0.44, 0, 0.56, 1);
 }
 
+/* ─── Light Mode ─────────────────────────────────────── */
+
+html:not(.dark) {
+  --color-bg-dark: #f4f7f5;
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: #e8ede9;
+  --color-bg-surface: #010907;
+  --color-text-primary: #1a1a2e;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  --color-border: #d5ddd9;
+  --color-border-focus: #09bc8a;
+}
+
 /* ─── Base Styles ─────────────────────────────────────── */
 
 @layer base {

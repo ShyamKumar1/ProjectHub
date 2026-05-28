@@ -24,7 +24,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Clear any stale logout flag
+    // Clear any stale logout flag from a previous session
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('ph_logged_out');
     }

@@ -39,21 +39,21 @@ export default async function taskRoutes(app: FastifyInstance) {
     const task = await models.getTaskById(request.params.taskId);
     if (!task) return reply.status(404).send({ success: false, error: 'Task not found' });
 
+    // Check for fresh completion BEFORE updating (pre-update status is the
+    // source of truth — avoids the useless post-update re-read that was always true)
+    const isNewCompletion = body.status === 'completed' && task.status !== 'completed';
+
     const updated = await models.updateTask(request.params.taskId, body);
 
-    // If status changed to completed, log activity (re-check to avoid double-logging)
-    if (body.status === 'completed' && task.status !== 'completed') {
-      // Double-check the task wasn't already completed (handles race conditions)
-      const recheck = await models.getTaskById(request.params.taskId);
-      if (recheck && recheck.status === 'completed' && task.status !== 'completed') {
-        await models.createActivity({
-          id: randomUUID(),
-          user_id: user.id,
-          project_id: task.project_id,
-          activity_type: 'task_completed',
-          metadata: { task_id: task.id, task_title: task.title },
-        });
-      }
+    // Log activity based on pre-update status, not post-update (which is always 'completed')
+    if (isNewCompletion) {
+      await models.createActivity({
+        id: randomUUID(),
+        user_id: user.id,
+        project_id: task.project_id,
+        activity_type: 'task_completed',
+        metadata: { task_id: task.id, task_title: task.title },
+      });
     }
 
     return { success: true, data: updated };

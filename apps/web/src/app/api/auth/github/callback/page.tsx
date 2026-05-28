@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 
-export default function GithubCallback() {
+function GithubCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const loginWithGithub = useAuthStore((s) => s.loginWithGithub);
@@ -23,4 +23,12 @@ export default function GithubCallback() {
   }, []);
 
   return <div className="min-h-screen flex items-center justify-center text-text-muted">Authenticating with GitHub...</div>;
+}
+
+export default function GithubCallback() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-text-muted">Loading...</div>}>
+      <GithubCallbackInner />
+    </Suspense>
+  );
 }

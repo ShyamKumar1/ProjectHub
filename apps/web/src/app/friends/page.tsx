@@ -59,7 +59,7 @@ export default function FriendsPage() {
 
   const handleAccept = async (userId: string) => {
     try {
-      await api.acceptFriendRequest(userId as any);
+      await api.acceptFriendRequest(userId);
       toast.success('Friend request accepted!');
       loadData();
     } catch {
@@ -116,7 +116,7 @@ export default function FriendsPage() {
           </h2>
           <div className="space-y-2">
             {requests.map((r: any) => (
-              <Card key={r.user_id_1} variant="bordered" className="p-4 flex items-center justify-between">
+              <Card key={`${r.user_id_1}-${r.user_id_2}`} variant="bordered" className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-sm text-accent">
                     {r.name?.charAt(0)?.toUpperCase() || '?'}

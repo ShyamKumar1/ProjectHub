@@ -29,8 +29,15 @@ function AppContent({ children }: { children: React.ReactNode }) {
   }, [setDark]);
 
   useEffect(() => {
+    // Don't check session on login/auth pages — they handle auth themselves.
+    // Also don't set isLoading=false here, or the routing effect on the next
+    // page (e.g., /dashboard after callback redirect) will see user=null +
+    // isLoading=false and redirect to /login before checkSession can respond.
+    if (pathname === '/login' || pathname.startsWith('/api/auth/')) {
+      return;
+    }
     checkSession();
-  }, [checkSession]);
+  }, [checkSession, pathname]);
 
   useEffect(() => {
     if (!isLoading && !user && pathname !== '/login' && !pathname.startsWith('/api/auth/')) {
@@ -49,6 +56,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading]);
 
+  // Login/auth pages — no layout, no loading spinner (spinner would block callback pages)
+  if (pathname === '/login' || pathname.startsWith('/api/auth/')) {
+    return <>{children}</>;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-800">
@@ -60,11 +72,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  // Login page — no layout
-  if (pathname === '/login' || pathname.startsWith('/api/auth/')) {
-    return <>{children}</>;
   }
 
   // Authenticated pages — full layout
@@ -83,8 +90,20 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                var theme = localStorage.getItem('theme');
+                if (theme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch(e) {}
+            })();
+          `
+        }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist+Mono&display=swap" rel="stylesheet" />
