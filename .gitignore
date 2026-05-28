@@ -8,3 +8,8 @@ dist/
 .DS_Store
 coverage/
 .vercel
+*.tsbuildinfo
+*.cjs
+*.mjs
+*.png
+!docs/**/*.png
