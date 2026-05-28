@@ -218,7 +218,11 @@ export default async function authRoutes(app: FastifyInstance) {
 
   // POST /api/v1/auth/logout
   app.post('/api/v1/auth/logout', async (request: FastifyRequest, reply: FastifyReply) => {
-    reply.clearCookie('token', { path: '/' });
+    reply.clearCookie('token', {
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
     return { success: true, data: { logged_out: true } };
   });
 }

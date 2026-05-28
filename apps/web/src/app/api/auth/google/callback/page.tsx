@@ -8,7 +8,6 @@ import { api } from '@/lib/api';
 function GoogleCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -21,6 +20,9 @@ function GoogleCallbackInner() {
         redirect_uri: `${window.location.origin}/api/auth/google/callback`,
       }).then((res) => {
         if (res.data?.token) api.setToken(res.data.token);
+        // Set user in Zustand store immediately so the auth guard on /dashboard
+        // doesn't redirect back to /login before checkSession can respond.
+        if (res.data?.user) useAuthStore.getState().setUser(res.data.user);
         router.push('/dashboard');
       }).catch(() => {
         router.push('/login?error=google_auth_failed');
